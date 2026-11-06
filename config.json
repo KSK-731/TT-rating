@@ -6,7 +6,7 @@
   "initial_volatility": 0.06,
   "tau": 0.5,
   "max_rd": 350,
-  "season_start_month": 4,
+  "season_start_month": 7,
   "season_rd_increase": 50,
   "use_score_margin": false,
   "active_years": 3,
