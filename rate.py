@@ -68,6 +68,25 @@ def load_config() -> dict:
     return cfg
 
 
+def fix_separators(text: str) -> str:
+    """区切りに「、」「，」を使った行も読めるようにする。
+    1行目（見出し）の列数に足りない分だけ、左から順に「、」を「,」に置き換える。
+    余った「、」は最後の列（備考）の文字としてそのまま残る。"""
+    lines = text.replace("，", ",").splitlines()
+    if not lines:
+        return text
+    lines[0] = lines[0].replace("、", ",")
+    need_total = lines[0].count(",")
+    out = [lines[0]]
+    for line in lines[1:]:
+        need = need_total - line.count(",")
+        while need > 0 and "、" in line:
+            line = line.replace("、", ",", 1)
+            need -= 1
+        out.append(line)
+    return "\n".join(out) + "\n"
+
+
 def read_csv(path: Path, required: list[str]) -> list[tuple[int, dict]]:
     """UTF-8 / Shift_JIS（Excel 保存）の両方を受け付ける。"""
     raw = path.read_bytes()
@@ -80,6 +99,7 @@ def read_csv(path: Path, required: list[str]) -> list[tuple[int, dict]]:
     else:
         raise InputError(f"{path.name}: 文字コードを判別できません。UTF-8 で保存してください。")
 
+    text = fix_separators(text)
     reader = csv.DictReader(io.StringIO(text))
     header = [norm(h) for h in (reader.fieldnames or [])]
     reader.fieldnames = header
