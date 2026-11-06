@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>卓球 団体戦レーティング</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f6f5f1; --card:#ffffff; --ink:#1d2321; --sub:#66706c; --line:#e2e0d9;
+  --accent:#0f7b5f; --accent-soft:#e3f2ec; --win:#0f7b5f; --lose:#b5432f; --hl:#fff4d6;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#141816; --card:#1d2220; --ink:#e8ece9; --sub:#9aa5a0; --line:#2e3532;
+    --accent:#4cc39c; --accent-soft:#1f3a31; --win:#4cc39c; --lose:#e57a62; --hl:#3a3420; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px 48px}
+header{padding:28px 0 12px}
+h1{font-size:1.5rem;margin:0 0 4px;letter-spacing:.02em}
+.meta{color:var(--sub);font-size:.85rem}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:16px 0 20px;overflow-x:auto}
+nav button{background:none;border:0;padding:10px 14px;font:inherit;color:var(--sub);cursor:pointer;
+  border-bottom:3px solid transparent;white-space:nowrap}
+nav button.on{color:var(--ink);border-color:var(--accent);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px}
+input[type=search],select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:6px;
+  background:var(--card);color:var(--ink)}
+label{font-size:.9rem;color:var(--sub)}
+.tbl{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{color:var(--sub);font-weight:500;font-size:.8rem}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--accent-soft)}
+tr.hl td{background:var(--hl)}
+tr.inactive td{color:var(--sub)}
+.rank{font-weight:700;width:2.5em}
+.rd{color:var(--sub);font-size:.82rem}
+.w{color:var(--win);font-weight:600}.l{color:var(--lose);font-weight:600}
+.upset{font-size:.72rem;background:var(--hl);border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-left:4px}
+.back{background:none;border:0;color:var(--accent);font:inherit;cursor:pointer;padding:0;margin-bottom:12px}
+.big{font-size:2.2rem;font-weight:700;font-variant-numeric:tabular-nums}
+.kv{display:flex;flex-wrap:wrap;gap:24px;margin:8px 0 16px}
+.kv div>span:first-child{display:block;color:var(--sub);font-size:.78rem}
+.kv .big{line-height:1.1}
+.chart{position:relative;height:300px;margin:8px 0 20px}
+h2{font-size:1.1rem;margin:20px 0 8px}
+.about p,.about li{max-width:46em}
+.hidden{display:none}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title">卓球 団体戦レーティング</h1>
+    <div class="meta" id="meta">読み込み中…</div>
+  </header>
+  <nav>
+    <button data-tab="rank" class="on">ランキング</button>
+    <button data-tab="matches">試合結果</button>
+    <button data-tab="about">レーティングについて</button>
+  </nav>
+
+  <section id="tab-rank">
+    <div class="card">
+      <div class="tools">
+        <input type="search" id="q" placeholder="学校名で絞り込み">
+        <label><input type="checkbox" id="showAll"> 最近出場していない学校も表示</label>
+      </div>
+      <div class="tbl"><table>
+        <thead><tr><th class="num">順位</th><th>学校</th><th class="num">レーティング</th>
+          <th class="num">±RD</th><th class="num">勝-敗</th><th>最終出場</th></tr></thead>
+        <tbody id="rankBody"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <section id="tab-team" class="hidden">
+    <button class="back" onclick="history.back()">← 戻る</button>
+    <div class="card" id="teamCard"></div>
+  </section>
+
+  <section id="tab-matches" class="hidden">
+    <div class="card">
+      <div class="tools">
+        <select id="season"></select>
+        <input type="search" id="mq" placeholder="学校名・大会名で絞り込み">
+      </div>
+      <div class="tbl"><table>
+        <thead><tr><th>日付</th><th>大会</th><th>チームA</th><th class="num">スコア</th><th>チームB</th>
+          <th class="num">A勝率予想</th></tr></thead>
+        <tbody id="matchBody"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <section id="tab-about" class="hidden">
+    <div class="card about">
+      <h2 style="margin-top:0">計算方法</h2>
+      <p>他校との団体戦の勝敗から、<b>Glicko-2</b> という方式で各校の強さを数値化しています。Chess（チェス）の世界で使われる Elo レーティングを改良したもので、「どれくらい確かな値か」も同時に推定します。</p>
+      <ul>
+        <li><b>レーティング</b>：初期値は <span id="initR">1500</span>。強い相手に勝つほど大きく上がります。</li>
+        <li><b>±RD</b>：値の不確かさ。だいたい「レーティング ±2×RD」の範囲に実力がある、という目安です。試合数が少ない学校や、しばらく出場していない学校ほど大きくなります。</li>
+        <li><b>大会単位で更新</b>：同じ大会（同じ日付・大会名）の試合はまとめて計算します。</li>
+        <li><b>年度替わり</b>：毎年<span id="seasonM">4</span>月に部員が入れ替わるため、全校の RD を少し広げて、新チームの結果に素早く追従できるようにしています。</li>
+        <li><b>勝率予想</b>：試合前の両校のレーティングから計算した、チームAが勝つ確率です。予想 30% 未満の側が勝った試合には「番狂わせ」と表示します。</li>
+        <li id="marginNote"></li>
+      </ul>
+      <p class="meta">ランキングには直近 <span id="actY">3</span> 年以内に出場した学校のみ表示しています。歴代最高は RD が十分小さい時点の値に限っています。</p>
+    </div>
+  </section>
+</div>
+
+<script>
+let D = null, chart = null, SM = 4;
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct = p => Math.round(p * 100) + '%';
+const seasonOf = d => { const [y, m] = d.split('-').map(Number); return m >= SM ? y : y - 1; };
+
+function show(tab){
+  for (const id of ['rank','team','matches','about']) $('#tab-'+id).classList.toggle('hidden', id !== tab);
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab || (tab==='team' && b.dataset.tab==='rank')));
+}
+function route(){
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h.startsWith('team=')) { renderTeam(h.slice(5)); show('team'); window.scrollTo(0,0); }
+  else show(['matches','about'].includes(h) ? h : 'rank');
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  location.hash = b.dataset.tab === 'rank' ? '' : b.dataset.tab;
+  if (b.dataset.tab === 'rank') route();
+});
+window.addEventListener('hashchange', route);
+
+function renderRank(){
+  const q = $('#q').value.trim(), all = $('#showAll').checked;
+  let k = 0;
+  $('#rankBody').innerHTML = D.teams.filter(t => (all || t.active)).map(t => {
+    if (t.active) k++;
+    if (q && !t.name.includes(q) && !t.aliases.some(a => a.includes(q))) return '';
+    const cls = ['click', t.name === D.highlight ? 'hl' : '', t.active ? '' : 'inactive'].join(' ');
+    return `<tr class="${cls}" onclick="location.hash='team='+encodeURIComponent(${esc(JSON.stringify(t.name))})">
+      <td class="num rank">${t.active ? k : '–'}</td><td>${esc(t.name)}</td>
+      <td class="num"><b>${t.rating}</b></td><td class="num rd">±${t.rd}</td>
+      <td class="num">${t.wins}-${t.losses}${t.draws ? '-' + t.draws : ''}</td><td>${t.last}</td></tr>`;
+  }).join('');
+}
+
+function matchRow(m, me){
+  const upset = (m.sa > m.sb && m.pa < 0.3) || (m.sb > m.sa && m.pa > 0.7);
+  if (me) {
+    const isA = m.a === me, opp = isA ? m.b : m.a, my = isA ? m.sa : m.sb, op = isA ? m.sb : m.sa;
+    const p = isA ? m.pa : 1 - m.pa, res = my > op ? '<span class="w">勝</span>' : my < op ? '<span class="l">敗</span>' : '分';
+    return `<tr><td>${m.date}</td><td>${esc(m.event)}</td><td>${res}</td><td class="num">${my}-${op}</td>
+      <td><a href="#team=${encodeURIComponent(opp)}">${esc(opp)}</a>${upset ? '<span class="upset">番狂わせ</span>' : ''}</td><td class="num">${pct(p)}</td></tr>`;
+  }
+  const wa = m.sa > m.sb ? 'w' : '', wb = m.sb > m.sa ? 'w' : '';
+  return `<tr><td>${m.date}</td><td>${esc(m.event)}</td>
+    <td class="${wa}"><a href="#team=${encodeURIComponent(m.a)}">${esc(m.a)}</a></td>
+    <td class="num">${m.sa}-${m.sb}</td>
+    <td class="${wb}"><a href="#team=${encodeURIComponent(m.b)}">${esc(m.b)}</a>${upset ? '<span class="upset">番狂わせ</span>' : ''}</td>
+    <td class="num">${pct(m.pa)}</td></tr>`;
+}
+
+function renderMatches(){
+  const s = $('#season').value, q = $('#mq').value.trim();
+  const list = D.matches.filter(m => (s === 'all' || seasonOf(m.date) == s) &&
+    (!q || m.a.includes(q) || m.b.includes(q) || m.event.includes(q))).slice().reverse();
+  $('#matchBody').innerHTML = list.slice(0, 500).map(m => matchRow(m)).join('') ||
+    '<tr><td colspan="6" class="meta">該当する試合はありません</td></tr>';
+}
+
+function renderTeam(name){
+  const t = D.teams.find(x => x.name === name);
+  if (!t) { $('#teamCard').innerHTML = '<p>学校が見つかりません。</p>'; return; }
+  const ms = D.matches.filter(m => m.a === name || m.b === name).slice().reverse();
+  const activeRank = D.teams.filter(x => x.active).findIndex(x => x.name === name) + 1;
+  $('#teamCard').innerHTML = `
+    <h2 style="margin-top:0">${esc(t.name)}</h2>
+    ${t.aliases.length ? `<div class="meta">旧名称：${t.aliases.map(esc).join('、')}</div>` : ''}
+    ${t.note ? `<div class="meta">${esc(t.note)}</div>` : ''}
+    <div class="kv">
+      <div><span>現在のレーティング</span><span class="big">${t.rating}</span> <span class="rd">±${t.rd}</span></div>
+      <div><span>順位</span>${activeRank ? activeRank + '位' : '圏外（最近出場なし）'}</div>
+      <div><span>通算</span>${t.wins}勝 ${t.losses}敗${t.draws ? ' ' + t.draws + '分' : ''}</div>
+      <div><span>歴代最高</span>${t.peak ? `${t.peak[0]}（${t.peak[1]}）` : '–'}</div>
+      <div><span>初出場</span>${t.first}</div>
+    </div>
+    <div class="chart"><canvas id="cv"></canvas></div>
+    <h2>試合一覧</h2>
+    <div class="tbl"><table><thead><tr><th>日付</th><th>大会</th><th>結果</th><th class="num">スコア</th><th>相手</th><th class="num">勝率予想</th></tr></thead>
+    <tbody>${ms.map(m => matchRow(m, name)).join('')}</tbody></table></div>`;
+  drawChart(t);
+}
+
+function drawChart(t){
+  if (chart) chart.destroy();
+  if (typeof Chart === 'undefined') return;
+  const css = getComputedStyle(document.documentElement);
+  const acc = css.getPropertyValue('--accent').trim(), sub = css.getPropertyValue('--sub').trim(), line = css.getPropertyValue('--line').trim();
+  const x = d => { const dt = new Date(d + 'T00:00:00'); const y0 = new Date(dt.getFullYear(), 0, 1); return dt.getFullYear() + (dt - y0) / 31557600000; };
+  const h = t.history;
+  chart = new Chart($('#cv'), {
+    type: 'line',
+    data: { datasets: [
+      { data: h.map(r => ({x: x(r[0]), y: r[2] + 2 * r[3]})), borderWidth: 0, pointRadius: 0 },
+      { data: h.map(r => ({x: x(r[0]), y: r[2] - 2 * r[3]})), borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: acc + '22' },
+      { data: h.map(r => ({x: x(r[0]), y: r[2], d: r[0], e: r[1], rd: r[3], c: r[4]})), borderColor: acc, backgroundColor: acc,
+        borderWidth: 2, pointRadius: h.length > 80 ? 0 : 2.5, pointHoverRadius: 5, tension: 0 }
+    ]},
+    options: {
+      maintainAspectRatio: false, animation: false, parsing: false,
+      interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+      plugins: { legend: { display: false },
+        tooltip: { filter: i => i.datasetIndex === 2, callbacks: {
+          title: i => `${i[0].raw.d} ${i[0].raw.e}`,
+          label: i => `${i.raw.y} ±${i.raw.rd}（${i.raw.c >= 0 ? '+' : ''}${i.raw.c}）` } } },
+      scales: {
+        x: { type: 'linear', ticks: { color: sub, precision: 0, callback: v => Number.isInteger(v) ? v : '' }, grid: { color: line } },
+        y: { ticks: { color: sub }, grid: { color: line } }
+      }
+    }
+  });
+}
+
+fetch('data/ratings.json', {cache: 'no-cache'}).then(r => r.json()).then(d => {
+  D = d; SM = d.method.season_start_month || 4;
+  $('#seasonM').textContent = SM;
+  document.title = d.title; $('#title').textContent = d.title;
+  $('#meta').textContent = `${d.stats.teams}校・${d.stats.events}大会・${d.stats.matches}試合（${d.stats.first ?? '–'} 〜 ${d.latest}）／ 更新 ${d.generated}`;
+  $('#initR').textContent = d.method.initial_rating;
+  $('#actY').textContent = d.active_years;
+  $('#marginNote').innerHTML = d.method.use_score_margin
+    ? '<b>スコア差を反映</b>：3-0 の勝ちは 3-2 の勝ちより高く評価します。' : '<b>勝敗のみ</b>を使います（3-0 も 3-2 も同じ 1 勝）。';
+  const seasons = [...new Set(d.matches.map(m => seasonOf(m.date)))].sort((a, b) => b - a);
+  $('#season').innerHTML = '<option value="all">全年度</option>' + seasons.map(s => `<option value="${s}">${s}年度</option>`).join('');
+  if (seasons.length) $('#season').value = seasons[0];
+  $('#q').oninput = renderRank; $('#showAll').onchange = renderRank;
+  $('#season').onchange = renderMatches; $('#mq').oninput = renderMatches;
+  renderRank(); renderMatches(); route();
+}).catch(e => { $('#meta').textContent = 'データを読み込めませんでした：' + e; });
+</script>
+</body>
+</html>
