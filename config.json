@@ -1,0 +1,14 @@
+{
+  "site_title": "卓球 団体戦レーティング",
+  "highlight_team": "",
+  "initial_rating": 1500,
+  "initial_rd": 350,
+  "initial_volatility": 0.06,
+  "tau": 0.5,
+  "max_rd": 350,
+  "season_start_month": 4,
+  "season_rd_increase": 50,
+  "use_score_margin": false,
+  "active_years": 3,
+  "peak_rd_limit": 150
+}
