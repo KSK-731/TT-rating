@@ -34,6 +34,15 @@ nav button.on{color:var(--ink);border-color:var(--accent);font-weight:600}
 .bar .ba{background:var(--accent)} .bar .bb{background:var(--lose);justify-content:flex-end}
 .pnames{display:flex;justify-content:space-between;gap:12px;font-size:.9rem}
 .pnames span{color:var(--sub);font-size:.8rem}
+.ac{position:relative;display:inline-block;flex:1 1 180px;min-width:0;max-width:100%}
+.ac input{width:100%}
+.vs .ac{flex:1 1 160px}
+.sugg{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:20;background:var(--card);border:1px solid var(--line);
+  border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sugg div{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:.95rem}
+.sugg div:last-child{border-bottom:0}
+.sugg div:hover,.sugg div.on{background:var(--accent-soft)}
+.sugg small{color:var(--sub);margin-left:6px}
 .tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px}
 input[type=search],select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:6px;
   background:var(--card);color:var(--ink)}
@@ -79,7 +88,7 @@ a{color:var(--accent)}
   <section id="tab-rank">
     <div class="card">
       <div class="tools">
-        <input type="search" id="q" list="schools" autocomplete="off" placeholder="学校名で絞り込み">
+        <input type="search" id="q" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="学校名で絞り込み">
         <label><input type="checkbox" id="showAll"> 最近出場していない学校も表示</label>
       </div>
       <div class="tbl"><table>
@@ -99,7 +108,7 @@ a{color:var(--accent)}
     <div class="card">
       <div class="tools">
         <select id="season"></select>
-        <input type="search" id="mq" list="schools" autocomplete="off" placeholder="学校名・大会名で絞り込み">
+        <input type="search" id="mq" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="学校名・大会名で絞り込み">
       </div>
       <div class="tbl"><table>
         <thead><tr><th>日付</th><th>大会</th><th>チームA</th><th class="num">スコア</th><th>チームB</th>
@@ -112,9 +121,9 @@ a{color:var(--accent)}
   <section id="tab-predict" class="hidden">
     <div class="card">
       <div class="vs">
-        <input type="search" id="pa" list="schools" autocomplete="off" placeholder="学校A">
+        <input type="search" id="pa" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="学校A">
         <span class="vsmark">vs</span>
-        <input type="search" id="pb" list="schools" autocomplete="off" placeholder="学校B">
+        <input type="search" id="pb" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="学校B">
       </div>
       <div id="pres"></div>
       <p class="meta">今のレーティングと ±RD から計算した、団体戦で勝つ確率の目安です。±RD が大きい（試合数が少ない）学校がいると、確率は50%に近づきます。</p>
@@ -138,7 +147,6 @@ a{color:var(--accent)}
   </section>
 </div>
 
-<datalist id="schools"></datalist>
 <script>
 let D = null, chart = null, SM = 4;
 const $ = s => document.querySelector(s);
@@ -236,6 +244,39 @@ function renderPredict(){
       <tbody>${h2h.slice().reverse().map(m => matchRow(m, A.name)).join('')}</tbody></table></div>` : '<p class="meta">記録の中に直接対決はありません。</p>'}`;
 }
 
+function attachSuggest(input, list){
+  const wrap = document.createElement('span'); wrap.className = 'ac';
+  input.parentNode.insertBefore(wrap, input); wrap.appendChild(input);
+  const box = document.createElement('div'); box.className = 'sugg'; box.hidden = true; wrap.appendChild(box);
+  let items = [], idx = -1;
+  const pick = v => { input.value = v; box.hidden = true; input.dispatchEvent(new Event('input')); input.blur(); };
+  const update = () => {
+    const q = input.value.trim();
+    items = (q ? list.filter(([n]) => n.includes(q)) : list.slice())
+      .sort((a, b) => (q && a[0].startsWith(q) ? 0 : 1) - (q && b[0].startsWith(q) ? 0 : 1)).slice(0, 50);
+    if (q && items.length === 1 && items[0][0] === q) items = [];
+    idx = -1;
+    box.innerHTML = items.map(([n, sub], i) => `<div data-i="${i}">${esc(n)}${sub ? `<small>${esc(sub)}</small>` : ''}</div>`).join('');
+    box.hidden = !items.length || document.activeElement !== input;
+  };
+  box.addEventListener('pointerdown', e => e.preventDefault());
+  box.addEventListener('mousedown', e => e.preventDefault());
+  box.addEventListener('click', e => { const d = e.target.closest('[data-i]'); if (d) pick(items[+d.dataset.i][0]); });
+  input.addEventListener('focus', update);
+  input.addEventListener('input', update);
+  input.addEventListener('compositionupdate', () => setTimeout(update, 0));
+  input.addEventListener('compositionend', () => setTimeout(update, 0));
+  input.addEventListener('blur', () => setTimeout(() => { box.hidden = true; }, 150));
+  input.addEventListener('keydown', e => {
+    if (box.hidden || e.isComposing) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); idx = (idx + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      [...box.children].forEach((d, i) => d.classList.toggle('on', i === idx)); box.children[idx].scrollIntoView({block: 'nearest'});
+    } else if (e.key === 'Enter' && idx >= 0) { e.preventDefault(); pick(items[idx][0]); }
+    else if (e.key === 'Escape') box.hidden = true;
+  });
+}
+
 function renderTeam(name){
   const t = D.teams.find(x => x.name === name);
   if (!t) { $('#teamCard').innerHTML = '<p>学校が見つかりません。</p>'; return; }
@@ -302,9 +343,12 @@ fetch('data/ratings.json', {cache: 'no-cache'}).then(r => r.json()).then(d => {
   const seasons = [...new Set(d.matches.map(m => seasonOf(m.date)))].sort((a, b) => b - a);
   $('#season').innerHTML = '<option value="all">全年度</option>' + seasons.map(s => `<option value="${s}">${s}年度</option>`).join('');
   if (seasons.length) $('#season').value = seasons[0];
-  const opts = new Set();
-  D.teams.forEach(t => { opts.add(t.name); t.aliases.forEach(a => opts.add(a)); });
-  $('#schools').innerHTML = [...opts].sort((a, b) => a.localeCompare(b, 'ja')).map(n => `<option value="${esc(n)}">`).join('');
+  const names = new Map();
+  D.teams.forEach(t => { names.set(t.name, ''); t.aliases.forEach(a => names.set(a, '→ ' + t.name)); });
+  const schoolList = [...names].sort((a, b) => a[0].localeCompare(b[0], 'ja'));
+  const eventList = [...new Set(D.matches.map(m => m.event))].map(e => [e, '大会']);
+  attachSuggest($('#q'), schoolList); attachSuggest($('#mq'), schoolList.concat(eventList));
+  attachSuggest($('#pa'), schoolList); attachSuggest($('#pb'), schoolList);
   $('#pa').oninput = renderPredict; $('#pb').oninput = renderPredict; renderPredict();
   $('#q').oninput = renderRank; $('#showAll').onchange = renderRank;
   $('#season').onchange = renderMatches; $('#mq').oninput = renderMatches;
