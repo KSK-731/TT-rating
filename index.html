@@ -112,7 +112,7 @@ a{color:var(--accent)}
         <li><b>勝率予想</b>：試合前の両校のレーティングから計算した、チームAが勝つ確率です。予想 30% 未満の側が勝った試合には「番狂わせ」と表示します。</li>
         <li id="marginNote"></li>
       </ul>
-      <p class="meta">ランキングには直近 <span id="actY">3</span> 年以内に出場した学校のみ表示しています。歴代最高は RD が十分小さい時点の値に限っています。</p>
+      <p class="meta">ランキングには直近 <span id="actY">3</span> 年以内に出場し、±RD が <span id="rdL">150</span> 以下の学校だけに順位を付けています。試合数が少なく値がまだ定まらない学校は「暫定」として順位の下に表示します。歴代最高は RD が十分小さい時点の値に限っています。</p>
     </div>
   </section>
 </div>
@@ -141,16 +141,24 @@ window.addEventListener('hashchange', route);
 
 function renderRank(){
   const q = $('#q').value.trim(), all = $('#showAll').checked;
-  let k = 0;
-  $('#rankBody').innerHTML = D.teams.filter(t => (all || t.active)).map(t => {
-    if (t.active) k++;
-    if (q && !t.name.includes(q) && !t.aliases.some(a => a.includes(q))) return '';
-    const cls = ['click', t.name === D.highlight ? 'hl' : '', t.active ? '' : 'inactive'].join(' ');
-    return `<tr class="${cls}" onclick="location.hash='team='+encodeURIComponent(${esc(JSON.stringify(t.name))})">
-      <td class="num rank">${t.active ? k : '–'}</td><td>${esc(t.name)}</td>
+  const grp = t => t.ranked ? 0 : t.active ? 1 : 2;
+  const list = D.teams.filter(t => all || t.active).slice().sort((a, b) => grp(a) - grp(b) || b.rating - a.rating);
+  let k = 0, prev = -1, html = '';
+  for (const t of list) {
+    const g = grp(t);
+    if (t.ranked) k++;
+    if (g !== prev && g > 0) html += `<tr><td colspan="6" class="meta" style="padding-top:16px">${g === 1
+      ? `暫定（試合数が少なく ±RD が ${D.rank_rd_limit} を超える学校。順位には含めていません）`
+      : `最近 ${D.active_years} 年出場していない学校`}</td></tr>`;
+    prev = g;
+    if (q && !t.name.includes(q) && !t.aliases.some(a => a.includes(q))) continue;
+    const cls = ['click', t.name === D.highlight ? 'hl' : '', t.ranked ? '' : 'inactive'].join(' ');
+    html += `<tr class="${cls}" onclick="location.hash='team='+encodeURIComponent(${esc(JSON.stringify(t.name))})">
+      <td class="num rank">${t.ranked ? k : '–'}</td><td>${esc(t.name)}</td>
       <td class="num"><b>${t.rating}</b></td><td class="num rd">±${t.rd}</td>
       <td class="num">${t.wins}-${t.losses}${t.draws ? '-' + t.draws : ''}</td><td>${t.last}</td></tr>`;
-  }).join('');
+  }
+  $('#rankBody').innerHTML = html;
 }
 
 function matchRow(m, me){
@@ -181,14 +189,14 @@ function renderTeam(name){
   const t = D.teams.find(x => x.name === name);
   if (!t) { $('#teamCard').innerHTML = '<p>学校が見つかりません。</p>'; return; }
   const ms = D.matches.filter(m => m.a === name || m.b === name).slice().reverse();
-  const activeRank = D.teams.filter(x => x.active).findIndex(x => x.name === name) + 1;
+  const activeRank = D.teams.filter(x => x.ranked).findIndex(x => x.name === name) + 1;
   $('#teamCard').innerHTML = `
     <h2 style="margin-top:0">${esc(t.name)}</h2>
     ${t.aliases.length ? `<div class="meta">旧名称：${t.aliases.map(esc).join('、')}</div>` : ''}
     ${t.note ? `<div class="meta">${esc(t.note)}</div>` : ''}
     <div class="kv">
       <div><span>現在のレーティング</span><span class="big">${t.rating}</span> <span class="rd">±${t.rd}</span></div>
-      <div><span>順位</span>${activeRank ? activeRank + '位' : '圏外（最近出場なし）'}</div>
+      <div><span>順位</span>${activeRank ? activeRank + '位' : t.active ? '暫定（試合数が少ないため順位なし）' : '圏外（最近出場なし）'}</div>
       <div><span>通算</span>${t.wins}勝 ${t.losses}敗${t.draws ? ' ' + t.draws + '分' : ''}</div>
       <div><span>歴代最高</span>${t.peak ? `${t.peak[0]}（${t.peak[1]}）` : '–'}</div>
       <div><span>初出場</span>${t.first}</div>
@@ -237,6 +245,7 @@ fetch('data/ratings.json', {cache: 'no-cache'}).then(r => r.json()).then(d => {
   $('#meta').textContent = `${d.stats.teams}校・${d.stats.events}大会・${d.stats.matches}試合（${d.stats.first ?? '–'} 〜 ${d.latest}）／ 更新 ${d.generated}`;
   $('#initR').textContent = d.method.initial_rating;
   $('#actY').textContent = d.active_years;
+  $('#rdL').textContent = d.rank_rd_limit ?? 150;
   $('#marginNote').innerHTML = d.method.use_score_margin
     ? '<b>スコア差を反映</b>：3-0 の勝ちは 3-2 の勝ちより高く評価します。' : '<b>勝敗のみ</b>を使います（3-0 も 3-2 も同じ 1 勝）。';
   const seasons = [...new Set(d.matches.map(m => seasonOf(m.date)))].sort((a, b) => b - a);

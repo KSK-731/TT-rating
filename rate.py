@@ -44,6 +44,7 @@ DEFAULT_CONFIG = {
     "use_score_margin": False,
     "active_years": 3,
     "peak_rd_limit": 150,
+    "rank_rd_limit": 150,
 }
 
 
@@ -351,6 +352,7 @@ def compute(cfg, teams, aliases, matches):
             "wins": i["wins"], "losses": i["losses"], "draws": i["draws"],
             "first": i["first"].isoformat(), "last": i["last"].isoformat(),
             "active": i["last"] >= cutoff,
+            "ranked": i["last"] >= cutoff and to_rd(st["phi"]) <= cfg["rank_rd_limit"],
             "peak": i["peak"],
             "note": teams.get(t, ""),
             "aliases": sorted(o for o, n in aliases.items() if n == t),
@@ -364,6 +366,7 @@ def compute(cfg, teams, aliases, matches):
         "generated": dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).strftime("%Y-%m-%d %H:%M"),
         "latest": latest.isoformat(),
         "active_years": cfg["active_years"],
+        "rank_rd_limit": cfg["rank_rd_limit"],
         "method": {k: cfg[k] for k in ("initial_rating", "initial_rd", "tau",
                                        "season_rd_increase", "use_score_margin",
                                        "season_start_month")},
