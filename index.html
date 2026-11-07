@@ -26,6 +26,14 @@ nav button{background:none;border:0;padding:10px 14px;font:inherit;color:var(--s
   border-bottom:3px solid transparent;white-space:nowrap}
 nav button.on{color:var(--ink);border-color:var(--accent);font-weight:600}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.vs{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.vs input{flex:1 1 160px;min-width:0}
+.vsmark{color:var(--sub);font-weight:600}
+.bar{display:flex;height:34px;border-radius:6px;overflow:hidden;margin:8px 0 6px;font-weight:700;font-size:.9rem}
+.bar div{display:flex;align-items:center;padding:0 10px;color:#fff;white-space:nowrap;min-width:0}
+.bar .ba{background:var(--accent)} .bar .bb{background:var(--lose);justify-content:flex-end}
+.pnames{display:flex;justify-content:space-between;gap:12px;font-size:.9rem}
+.pnames span{color:var(--sub);font-size:.8rem}
 .tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px}
 input[type=search],select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:6px;
   background:var(--card);color:var(--ink)}
@@ -64,13 +72,14 @@ a{color:var(--accent)}
   <nav>
     <button data-tab="rank" class="on">ランキング</button>
     <button data-tab="matches">試合結果</button>
+    <button data-tab="predict">勝率予想</button>
     <button data-tab="about">レーティングについて</button>
   </nav>
 
   <section id="tab-rank">
     <div class="card">
       <div class="tools">
-        <input type="search" id="q" placeholder="学校名で絞り込み">
+        <input type="search" id="q" list="schools" autocomplete="off" placeholder="学校名で絞り込み">
         <label><input type="checkbox" id="showAll"> 最近出場していない学校も表示</label>
       </div>
       <div class="tbl"><table>
@@ -90,13 +99,25 @@ a{color:var(--accent)}
     <div class="card">
       <div class="tools">
         <select id="season"></select>
-        <input type="search" id="mq" placeholder="学校名・大会名で絞り込み">
+        <input type="search" id="mq" list="schools" autocomplete="off" placeholder="学校名・大会名で絞り込み">
       </div>
       <div class="tbl"><table>
         <thead><tr><th>日付</th><th>大会</th><th>チームA</th><th class="num">スコア</th><th>チームB</th>
           <th class="num">A勝率予想</th></tr></thead>
         <tbody id="matchBody"></tbody>
       </table></div>
+    </div>
+  </section>
+
+  <section id="tab-predict" class="hidden">
+    <div class="card">
+      <div class="vs">
+        <input type="search" id="pa" list="schools" autocomplete="off" placeholder="学校A">
+        <span class="vsmark">vs</span>
+        <input type="search" id="pb" list="schools" autocomplete="off" placeholder="学校B">
+      </div>
+      <div id="pres"></div>
+      <p class="meta">今のレーティングと ±RD から計算した、団体戦で勝つ確率の目安です。±RD が大きい（試合数が少ない）学校がいると、確率は50%に近づきます。</p>
     </div>
   </section>
 
@@ -117,6 +138,7 @@ a{color:var(--accent)}
   </section>
 </div>
 
+<datalist id="schools"></datalist>
 <script>
 let D = null, chart = null, SM = 4;
 const $ = s => document.querySelector(s);
@@ -125,13 +147,13 @@ const pct = p => Math.round(p * 100) + '%';
 const seasonOf = d => { const [y, m] = d.split('-').map(Number); return m >= SM ? y : y - 1; };
 
 function show(tab){
-  for (const id of ['rank','team','matches','about']) $('#tab-'+id).classList.toggle('hidden', id !== tab);
+  for (const id of ['rank','team','matches','predict','about']) $('#tab-'+id).classList.toggle('hidden', id !== tab);
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab || (tab==='team' && b.dataset.tab==='rank')));
 }
 function route(){
   const h = decodeURIComponent(location.hash.slice(1));
   if (h.startsWith('team=')) { renderTeam(h.slice(5)); show('team'); window.scrollTo(0,0); }
-  else show(['matches','about'].includes(h) ? h : 'rank');
+  else show(['matches','predict','about'].includes(h) ? h : 'rank');
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   location.hash = b.dataset.tab === 'rank' ? '' : b.dataset.tab;
@@ -183,6 +205,35 @@ function renderMatches(){
     (!q || m.a.includes(q) || m.b.includes(q) || m.event.includes(q))).slice().reverse();
   $('#matchBody').innerHTML = list.slice(0, 500).map(m => matchRow(m)).join('') ||
     '<tr><td colspan="6" class="meta">該当する試合はありません</td></tr>';
+}
+
+const findTeam = v => { v = (v || '').trim(); if (!v) return null;
+  return D.teams.find(t => t.name === v) || D.teams.find(t => t.aliases.includes(v)) || null; };
+function winProb(A, B){
+  const S = 173.7178, phi = Math.hypot(A.rd, B.rd) / S;
+  const g = 1 / Math.sqrt(1 + 3 * phi * phi / (Math.PI * Math.PI));
+  return 1 / (1 + Math.exp(-g * (A.rating - B.rating) / S));
+}
+function renderPredict(){
+  const va = $('#pa').value.trim(), vb = $('#pb').value.trim();
+  const A = findTeam(va), B = findTeam(vb), out = $('#pres');
+  if (!va || !vb) { out.innerHTML = '<p class="meta">2つの学校を入力してください。</p>'; return; }
+  const miss = [[va, A], [vb, B]].filter(x => !x[1]).map(x => '「' + esc(x[0]) + '」');
+  if (miss.length) { out.innerHTML = `<p class="meta">${miss.join('、')} は登録されていません。候補から選んでください。</p>`; return; }
+  if (A.name === B.name) { out.innerHTML = '<p class="meta">違う学校を選んでください。</p>'; return; }
+  const p = winProb(A, B), pa = Math.round(p * 1000) / 10, pb = Math.round((100 - pa) * 10) / 10;
+  const h2h = D.matches.filter(m => (m.a === A.name && m.b === B.name) || (m.a === B.name && m.b === A.name));
+  const wa = h2h.filter(m => (m.a === A.name ? m.sa > m.sb : m.sb > m.sa)).length;
+  const wb = h2h.filter(m => (m.a === B.name ? m.sa > m.sb : m.sb > m.sa)).length;
+  out.innerHTML = `
+    <div class="pnames"><div><b>${esc(A.name)}</b> <span>${A.rating} ±${A.rd}</span></div>
+      <div style="text-align:right"><span>${B.rating} ±${B.rd}</span> <b>${esc(B.name)}</b></div></div>
+    <div class="bar"><div class="ba" style="width:${Math.max(pa, 0.5)}%">${pa >= 12 ? pa + '%' : ''}</div>
+      <div class="bb" style="width:${Math.max(pb, 0.5)}%">${pb >= 12 ? pb + '%' : ''}</div></div>
+    <p><b>${esc(pa >= pb ? A.name : B.name)}</b> が勝つ確率 <b>${Math.max(pa, pb)}%</b></p>
+    <h2>直接対決 ${h2h.length ? `（${esc(A.name)} ${wa}勝 ${wb}敗）` : ''}</h2>
+    ${h2h.length ? `<div class="tbl"><table><thead><tr><th>日付</th><th>大会</th><th>結果</th><th class="num">スコア</th><th>相手</th><th class="num">勝率予想</th></tr></thead>
+      <tbody>${h2h.slice().reverse().map(m => matchRow(m, A.name)).join('')}</tbody></table></div>` : '<p class="meta">記録の中に直接対決はありません。</p>'}`;
 }
 
 function renderTeam(name){
@@ -251,6 +302,10 @@ fetch('data/ratings.json', {cache: 'no-cache'}).then(r => r.json()).then(d => {
   const seasons = [...new Set(d.matches.map(m => seasonOf(m.date)))].sort((a, b) => b - a);
   $('#season').innerHTML = '<option value="all">全年度</option>' + seasons.map(s => `<option value="${s}">${s}年度</option>`).join('');
   if (seasons.length) $('#season').value = seasons[0];
+  const opts = new Set();
+  D.teams.forEach(t => { opts.add(t.name); t.aliases.forEach(a => opts.add(a)); });
+  $('#schools').innerHTML = [...opts].sort((a, b) => a.localeCompare(b, 'ja')).map(n => `<option value="${esc(n)}">`).join('');
+  $('#pa').oninput = renderPredict; $('#pb').oninput = renderPredict; renderPredict();
   $('#q').oninput = renderRank; $('#showAll').onchange = renderRank;
   $('#season').onchange = renderMatches; $('#mq').oninput = renderMatches;
   renderRank(); renderMatches(); route();

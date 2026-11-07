@@ -155,6 +155,7 @@ def load_inputs():
         return aliases.get(name, name)
 
     matches = []
+    seen: dict[tuple, int] = {}
     for line, r in read_csv(DATA / "matches.csv",
                             ["日付", "大会名", "チームA", "チームB", "得点A", "得点B"]):
         where = f"matches.csv {line}行目"
@@ -185,8 +186,15 @@ def load_inputs():
             bad = True
         if bad:
             continue
+        note = r.get("備考", "")
+        key = (date, event, tuple(sorted([(a, sa), (b, sb)])), note)
+        if key in seen:
+            errors.append(f"{where}: {seen[key]}行目とまったく同じ試合です（{date} {event} {a} {sa}-{sb} {b}）"
+                          "。二重に入力していないか確認してください")
+            continue
+        seen[key] = line
         matches.append({"line": line, "date": date, "event": event,
-                        "a": a, "b": b, "sa": sa, "sb": sb, "note": r.get("備考", "")})
+                        "a": a, "b": b, "sa": sa, "sb": sb, "note": note})
 
     if errors:
         raise InputError("\n".join(errors))
