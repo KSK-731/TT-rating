@@ -385,6 +385,51 @@ def compute(cfg, teams, aliases, matches):
     }
 
 
+def rank_map(result: dict) -> dict:
+    """順位が付く学校の {学校名: 順位}。"""
+    return {t["name"]: k for k, t in enumerate([t for t in result["teams"] if t["ranked"]], start=1)}
+
+
+def add_history_views(cfg, teams, aliases, matches, result):
+    """前回大会からの順位変動と、年度末ごとのランキングを付け加える。"""
+    matches = sorted(matches, key=lambda m: (m["date"], m["line"]))
+    if not matches:
+        result["prev"] = None
+        result["seasons"] = []
+        return
+    # 1) 最新の大会（日付＋大会名）の直前の順位
+    last = (matches[-1]["date"], matches[-1]["event"])
+    before = [m for m in matches if (m["date"], m["event"]) != last]
+    result["prev"] = None
+    if before:
+        prev = compute(cfg, teams, aliases, [dict(m) for m in before])
+        result["prev"] = {"event": f"{last[0].isoformat()} {last[1]}", "ranks": rank_map(prev)}
+
+    # 2) 年度末（次の年度が始まる直前）時点のランキング
+    sm = cfg["season_start_month"]
+    seasons = sorted({season_of(m["date"], sm) for m in matches})
+    out = []
+    for sy in seasons[:-1]:                       # 今の年度は「現在」として表示する
+        end = dt.date(sy + 1, sm, 1)
+        part = [m for m in matches if m["date"] < end]
+        res = compute(cfg, teams, aliases, [dict(m) for m in part])
+        rec: dict[str, list] = {}
+        for m in part:
+            if season_of(m["date"], sm) != sy:
+                continue
+            for me, my, op in ((m["a"], m["sa"], m["sb"]), (m["b"], m["sb"], m["sa"])):
+                r = rec.setdefault(me, [0, 0])
+                if my > op: r[0] += 1
+                elif my < op: r[1] += 1
+        out.append({
+            "season": sy, "asof": (end - dt.timedelta(days=1)).isoformat(),
+            "teams": [{"name": t["name"], "rating": t["rating"], "rd": t["rd"], "ranked": t["ranked"],
+                       "active": t["active"], "season_wl": rec.get(t["name"], [0, 0])}
+                      for t in res["teams"] if t["active"]],
+        })
+    result["seasons"] = out[::-1]               # 新しい年度から
+
+
 def main():
     cfg = load_config()
     try:
@@ -393,15 +438,21 @@ def main():
         print("入力データにエラーがあります:\n" + str(e), file=sys.stderr)
         sys.exit(1)
 
-    result = compute(cfg, teams, aliases, matches)
+    result = compute(cfg, teams, aliases, [dict(m) for m in matches])
+    add_history_views(cfg, teams, aliases, matches, result)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    shutil.copy(ROOT / "index.html", SITE / "index.html")
+    for name in ("index.html", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"):
+        if (ROOT / name).exists():
+            shutil.copy(ROOT / name, SITE / name)
 
     s = result["stats"]
     print(f"OK: {s['teams']}校 / {s['events']}大会 / {s['matches']}試合 → {OUT.relative_to(ROOT)}")
-    for k, t in enumerate([t for t in result["teams"] if t["active"]][:10], start=1):
-        print(f"  {k:2d}. {t['name']:<16} {t['rating']:5d} ±{t['rd']}")
+    try:
+        for k, t in enumerate([t for t in result["teams"] if t["ranked"]][:10], start=1):
+            print(f"  {k:2d}. {t['name']:<16} {t['rating']:5d} ±{t['rd']}")
+    except BrokenPipeError:
+        pass
 
 
 if __name__ == "__main__":
