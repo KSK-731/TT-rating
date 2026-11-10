@@ -1,7 +1,7 @@
 {
   "rank_rd_limit": 150,
   "site_title": "卓球 団体戦レーティング",
-  "highlight_team": "",
+  "highlight_team": "星光学院",
   "initial_rating": 1500,
   "initial_rd": 350,
   "initial_volatility": 0.06,
