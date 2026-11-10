@@ -11,6 +11,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="卓球レート">
 <meta name="theme-color" content="#0f7b5f">
+<script src="bracket.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root{
@@ -78,7 +79,12 @@ tr.inactive td{color:var(--sub)}
 h2{font-size:1.1rem;margin:20px 0 8px}
 .about p,.about li{max-width:46em}
 .hidden{display:none}
-.chg{font-size:.8rem;font-variant-numeric:tabular-nums;width:3.2em}
+.notice{background:var(--hl);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;margin:8px 0 4px;line-height:1.7}
+.notice .meta{margin-left:6px;font-size:.8rem}
+#bkSwitch .btn{font:inherit;padding:6px 14px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);cursor:pointer}
+#bkSwitch .btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.chg{font-size:.8rem;font-variant-numeric:tabular-nums;width:4.2em;line-height:1.25}
+.rchg{display:block;font-size:.72rem;font-weight:400;opacity:.9}
 .up{color:var(--win)} .down{color:var(--lose)} .new{color:var(--sub);font-size:.72rem}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:4px 0 0;font-size:.88rem}
 .legend span{display:inline-flex;align-items:center;gap:6px}
@@ -122,6 +128,7 @@ a{color:var(--accent)}
     <h1 id="title">卓球 団体戦レーティング</h1>
     <div class="meta" id="meta">読み込み中…</div>
   </header>
+  <div id="notice" class="notice" hidden></div>
   <nav>
     <button data-tab="rank" class="on">ランキング</button>
     <button data-tab="matches">試合結果</button>
@@ -191,55 +198,12 @@ a{color:var(--accent)}
   </section>
 
   <section id="tab-bracket" class="hidden">
-    <div class="card bk">
-      <h2 style="margin-top:0">1. 組み合わせを入れる</h2>
-      <div class="row">
-        <input type="text" id="bkEvent" autocomplete="off" placeholder="大会名（例：大阪高校総体（男子））">
-        <input type="date" id="bkDate">
-        <input type="text" id="bkNote" placeholder="備考（例：一次）" style="flex:1 1 120px">
-      </div>
-      <textarea id="bkText" spellcheck="false" autocapitalize="off" autocorrect="off"
-        placeholder="組み合わせ表の上から順に、1行に1校ずつ入れてください。&#10;上宮 *2&#10;大産大附&#10;bye&#10;泉陽&#10;…"></textarea>
-      <p class="meta" style="margin:6px 0 0">・表の<b>上から順に</b>1行1校。左右2列の表は、左の列を上から入れてから右の列を続けます。<br>
-        ・相手のいない枠は <b>bye</b>。bye の書かれていないシード校は、待つ回戦の数を <b>*1</b>・<b>*2</b> のように後ろに付けます。<br>
-        ・棄権した学校は後ろに <b>棄権</b> と付けます（相手は不戦で勝ち上がり、試合には数えません）。<br>
-        ・番号や空白は自動で取り除きます。PDF や写真の文字は、長押しでコピーして貼り付けられます。</p>
-      <div id="bkWarn"></div>
+    <div class="tools" id="bkSwitch">
+      <button class="btn pri" data-m="next">次の大会</button>
+      <button class="btn" data-m="free">自分で作る</button>
     </div>
-
-    <div class="card" id="bkProbCard" style="margin-top:16px" hidden>
-      <h2 style="margin-top:0">2. 勝ち上がる確率</h2>
-      <div class="tools"><label>自校 <select id="bkMine"></select></label></div>
-      <div id="bkGoal"></div>
-      <div class="tbl"><table><thead id="bkProbHead"></thead><tbody id="bkProbBody"></tbody></table></div>
-      <p class="meta">今のレーティングで、組み合わせどおりに戦った場合の確率です。下の表で結果を入れると、残りの試合だけで計算し直します。</p>
-      <h2>ブロックの比較</h2>
-      <div class="tbl"><table><thead><tr><th>ブロック</th><th>本命</th><th class="num">勝ち抜く確率</th><th class="num">上位3校の平均</th><th>主な学校</th></tr></thead><tbody id="bkBlocks"></tbody></table></div>
-      <p class="meta">上位3校の平均レーティングがいちばん高いブロックを「最激戦」と表示します。</p>
-    </div>
-
-    <div class="card" id="bkTreeCard" style="margin-top:16px" hidden>
-      <h2 style="margin-top:0">3. 結果を入れる</h2>
-      <p class="meta" style="margin-top:0">勝った学校をタップします（もう一度タップで取り消し）。スコアは下のボタンで 3-0 → 3-1 → 3-2 → 棄権 と切り替わります。入力内容はこの端末に自動で保存されます。</p>
-      <div class="rounds" id="bkRounds"></div>
-    </div>
-
-    <div class="card" id="bkReviewCard" style="margin-top:16px" hidden>
-      <h2 style="margin-top:0">4. 振り返り</h2>
-      <p class="meta" style="margin-top:0" id="bkReviewNote"></p>
-      <div class="tbl"><table><thead><tr><th>学校</th><th class="num">期待</th><th class="num">実際</th><th class="num">差</th></tr></thead><tbody id="bkReview"></tbody></table></div>
-    </div>
-
-    <div class="card bk" id="bkCsvCard" style="margin-top:16px" hidden>
-      <h2 style="margin-top:0">5. matches.csv に貼る行</h2>
-      <div id="bkCsvInfo" class="meta"></div>
-      <textarea id="bkCsv" readonly style="min-height:160px"></textarea>
-      <div id="bkDup" class="meta" style="margin-top:6px"></div>
-      <div class="row" style="margin-top:8px">
-        <button class="btn pri" id="bkCopy">コピー</button>
-        <button class="btn" id="bkClear">結果をすべて消す</button>
-      </div>
-    </div>
+    <div id="bkNext"></div>
+    <div id="bkFree" hidden></div>
   </section>
 
   <section id="tab-predict" class="hidden">
@@ -303,19 +267,27 @@ window.addEventListener('hashchange', route);
 const asofLabel = d => { const [y, m] = d.split('-').map(Number); return `${y}年${m}月末時点`; };
 function rankSource(){
   const w = $('#rankWhen').value;
-  if (w === 'now') return { teams: D.teams, prev: D.prev ? D.prev.ranks : null, season: false,
-    note: D.prev ? `変動は「${D.prev.event}」の前の順位との比較です。` : '' };
+  if (w === 'now') return { teams: D.teams, prev: D.prev ? D.prev.ranks : null, prevR: D.prev ? D.prev.ratings || null : null, season: false,
+    note: D.prev ? `変動は「${D.prev.event}」の前と比べた順位（▲▼）とレーティング（＋−）です。` : '' };
   const i = +w, sn = D.seasons[i], older = D.seasons[i + 1];
   const prev = older ? Object.fromEntries(older.teams.filter(t => t.ranked).map((t, k) => [t.name, k + 1])) : null;
-  return { teams: sn.teams, prev, season: true,
-    note: `${asofLabel(sn.asof)}のランキングです。勝-敗はその年度の成績、変動は前年度末との比較です。` };
+  const prevR = older ? Object.fromEntries(older.teams.map(t => [t.name, t.rating])) : null;
+  return { teams: sn.teams, prev, prevR, season: true,
+    note: `${asofLabel(sn.asof)}のランキングです。勝-敗はその年度の成績、変動は前年度末と比べた順位とレーティングです。` };
 }
-function chgCell(name, rank, prev){
-  if (!prev || !rank) return '<td class="num chg"></td>';
-  const p = prev[name];
-  if (!p) return '<td class="num chg"><span class="new">NEW</span></td>';
-  const d = p - rank;
-  return `<td class="num chg">${d > 0 ? `<span class="up">▲${d}</span>` : d < 0 ? `<span class="down">▼${-d}</span>` : '<span class="new">–</span>'}</td>`;
+function chgCell(name, rank, prev, prevR, rating){
+  let r = '';
+  if (prev && rank) {
+    const p = prev[name];
+    if (!p) r = '<span class="new">NEW</span>';
+    else { const d = p - rank; r = d > 0 ? `<span class="up">▲${d}</span>` : d < 0 ? `<span class="down">▼${-d}</span>` : '<span class="new">–</span>'; }
+  }
+  let rr = '';
+  if (prevR && prevR[name] != null) {
+    const d = rating - prevR[name];
+    rr = d ? `<span class="rchg ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}</span>` : '<span class="rchg new">±0</span>';
+  }
+  return `<td class="num chg">${r}${rr}</td>`;
 }
 function renderRank(){
   const q = $('#q').value.trim(), all = $('#showAll').checked, src = rankSource();
@@ -337,7 +309,7 @@ function renderRank(){
     const cls = ['click', t.name === D.highlight ? 'hl' : '', t.ranked ? '' : 'inactive'].join(' ');
     const wl = src.season ? `${t.season_wl[0]}-${t.season_wl[1]}` : `${t.wins}-${t.losses}${t.draws ? '-' + t.draws : ''}`;
     html += `<tr class="${cls}" onclick="location.hash='team='+encodeURIComponent(${esc(JSON.stringify(t.name))})">
-      <td class="num rank">${t.ranked ? k : '–'}</td>${chgCell(t.name, t.ranked ? k : 0, src.prev)}<td>${esc(t.name)}</td>
+      <td class="num rank">${t.ranked ? k : '–'}</td>${chgCell(t.name, t.ranked ? k : 0, src.prev, src.prevR, t.rating)}<td>${esc(t.name)}</td>
       <td class="num"><b>${t.rating}</b></td><td class="num rd">±${t.rd}</td>
       <td class="num">${wl}</td>${src.season ? '' : `<td>${t.last}</td>`}</tr>`;
   }
@@ -520,258 +492,44 @@ function drawCompare(){
 }
 
 
-/* ===== トーナメント表 ===== */
-const BK = { tree: null, leaves: [], results: {}, saveKey: 'tt-bracket-v1' };
-const BYE = '__bye';
-function bkSave(){ try { localStorage.setItem(BK.saveKey, JSON.stringify({ text: $('#bkText').value, event: $('#bkEvent').value,
-  date: $('#bkDate').value, note: $('#bkNote').value, results: BK.results, mine: $('#bkMine').value })); } catch (e) {} }
-function bkLoad(){ try { return JSON.parse(localStorage.getItem(BK.saveKey) || 'null'); } catch (e) { return null; } }
-
-function bigrams(s){ const a = []; for (let i = 0; i < s.length - 1; i++) a.push(s.slice(i, i + 2)); return a.length ? a : [s]; }
-function sim(a, b){
-  if (a === b) return 1;
-  const A = bigrams(a), B = bigrams(b); let hit = 0; const used = B.slice();
-  for (const x of A) { const k = used.indexOf(x); if (k >= 0) { hit++; used.splice(k, 1); } }
-  let c = 0; for (const ch of new Set(a)) if (b.includes(ch)) c++;
-  return Math.max(2 * hit / (A.length + B.length), c / Math.max(new Set(a).size, new Set(b).size) * 0.8);
-}
-function bkParse(text){
-  const out = [];
-  text.split(/\r?\n/).forEach((raw, ln) => {
-    let s = raw.normalize('NFKC').replace(/[　\t]/g, ' ').trim();
-    if (!s) return;
-    s = s.replace(/^([0-9]+|[A-H]|[IVX]+|[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+)[\s.．、:)]+/, '').replace(/\s+[0-9]+$/, '').trim();
-    let wait = 0, wd = false;
-    const m = s.match(/\*\s*([0-9])\s*$/); if (m) { wait = +m[1]; s = s.slice(0, m.index).trim(); }
-    if (/(\s|^)(棄権|キ)$/.test(s)) { wd = true; s = s.replace(/(\s|^)(棄権|キ)$/, '').trim(); }
-    const name = s.replace(/\s+/g, '');
-    if (!name) return;
-    const bye = /^(bye|BYE|Bye|不戦)$/.test(name);
-    const t = bye ? null : findTeam(name);
-    out.push({ ln, raw, name: t ? t.name : name, input: name, team: t, wait, bye, wd });
-  });
-  return out;
-}
-function bkBuild(entries){
-  const warns = [];
-  let items = entries.map((e, i) => ({ leaf: true, e, i, lo: i, hi: i, level: e.bye ? 0 : e.wait }));
-  for (let r = 0; items.length > 1 && r < 12; r++) {
-    const out = [];
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i], nx = items[i + 1];
-      if (it.level === r && nx && nx.level === r) {
-        out.push({ leaf: false, a: it, b: nx, level: r + 1, lo: it.lo, hi: nx.hi, key: it.lo + '-' + nx.hi }); i++;
-      } else {
-        if (it.level === r) { it.level = r + 1; if (it.leaf && !it.e.bye) warns.push(`「${it.e.name}」は相手がいないので、${r + 1}回戦は不戦で進む扱いにしました（シードなら *${it.e.wait + 1} を付けると確実です）`); }
-        out.push(it);
-      }
+/* ===== トーナメント表（部品は bracket.js） ===== */
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+function bkInit(schoolList, eventNames){
+  const ctx = { findTeam, winProb, esc, attachSuggest, highlight: D.highlight,
+    allNames: D.teams.flatMap(t => [[t.name, t.name], ...t.aliases.map(a => [a, t.name])]), eventNames };
+  // 自分で作る（前のトーナメント画面で入れた内容も引き継ぐ）
+  const FREE = 'tt-bracket-v1', saved = lsGet(FREE) || {};
+  TTBracket($('#bkFree'), { mode: 'free', ctx, state: { text: saved.text || '', results: saved.results || {}, mine: saved.mine || '' },
+    onChange: st => lsSet(FREE, { text: st.text, results: st.results, mine: st.mine }) });
+  // 次の大会（管理者が公開した組み合わせ）
+  fetch('data/next.json', {cache: 'no-cache'}).then(r => r.ok ? r.json() : null).catch(() => null).then(nx => {
+    if (!nx || !nx.active || !nx.text) {
+      $('#bkNext').innerHTML = '<div class="card"><p class="meta" style="margin:0">次の大会の組み合わせは、まだ公開されていません。「自分で作る」では、組み合わせを自由に入れて試せます。</p></div>';
+      if (!lsGet('tt-bk-mode')) setBkMode('free');
+      return;
     }
-    items = out;
-  }
-  return { root: items[0] || null, warns };
+    const key = 'tt-next-' + nx.id, mine = lsGet(key) || {};
+    TTBracket($('#bkNext'), { mode: 'next', ctx, official: { results: nx.results || {} },
+      state: { text: nx.text, event: nx.event, date: nx.date, note: nx.note, picks: mine.picks || {}, mine: mine.mine || '' },
+      onChange: st => lsSet(key, { picks: st.picks, mine: st.mine }) });
+  });
+  document.querySelectorAll('#bkSwitch button').forEach(b => b.onclick = () => { setBkMode(b.dataset.m); lsSet('tt-bk-mode', b.dataset.m); });
+  setBkMode(lsGet('tt-bk-mode') || 'next');
 }
-function rOf(name){ const t = findTeam(name); return t ? t : { rating: 1500, rd: 350 }; }
-function decided(node){            // 決まった出場校（学校名 / BYE / null=未定）
-  if (node.leaf) return (node.e.bye || node.e.wd) ? BYE : node.e.name;
-  const A = decided(node.a), B = decided(node.b);
-  if (A === BYE && B === BYE) return BYE;
-  if (A === BYE && B) return B;
-  if (B === BYE && A) return A;
-  const res = BK.results[node.key];
-  if (res && A && B) { if (res.score === 'w') return res.side === 'a' ? A : B; return res.side === 'a' ? A : B; }
-  return null;
-}
-function dist(node, useRes, acc){  // {学校名: その枠を勝ち上がる確率}
-  if (node.leaf) return { [(node.e.bye || node.e.wd) ? BYE : node.e.name]: 1 };
-  const dl = dist(node.a, useRes, acc), dr = dist(node.b, useRes, acc);
-  if (useRes) { const d = decided(node); if (d) { node._d = { [d]: 1 }; return node._d; } }
-  const out = {};
-  for (const [t, pt] of Object.entries(dl)) for (const [u, pu] of Object.entries(dr)) {
-    const w = pt * pu;
-    if (t === BYE) { out[u] = (out[u] || 0) + w; continue; }
-    if (u === BYE) { out[t] = (out[t] || 0) + w; continue; }
-    const p = winProb(rOf(t), rOf(u));
-    out[t] = (out[t] || 0) + w * p; out[u] = (out[u] || 0) + w * (1 - p);
-    if (acc) { acc[t] = (acc[t] || 0) + w * p; acc[u] = (acc[u] || 0) + w * (1 - p); }
-  }
-  node._d = out;
-  return out;
-}
-function walk(node, f, depth = 0, path = []){ f(node, depth, path); if (!node.leaf) { walk(node.a, f, depth + 1, [...path, node]); walk(node.b, f, depth + 1, [...path, node]); } }
-const STAGES = ['優勝', '決勝', 'ベスト4', 'ベスト8', 'ベスト16', 'ベスト32'];
-
-function bkRender(){
-  if (!D) return;
-  const entries = bkParse($('#bkText').value);
-  const { root, warns } = bkBuild(entries);
-  BK.tree = root;
-  // 表記の確認
-  const unknown = entries.filter(e => !e.bye && !e.team);
-  const all = [];
-  D.teams.forEach(t => { all.push([t.name, t.name]); t.aliases.forEach(a => all.push([a, t.name])); });
-  let wh = '';
-  for (const e of unknown) {
-    const cand = all.map(([n, to]) => [sim(e.input, n), to]).sort((a, b) => b[0] - a[0]);
-    const seen = new Set(), top = cand.filter(c => c[0] >= 0.34 && !seen.has(c[1]) && seen.add(c[1])).slice(0, 3);
-    wh += `<div>「<b>${esc(e.input)}</b>」（${e.ln + 1}行目）は登録されていません。${top.length ? 'もしかして：' + top.map(c =>
-      `<button data-ln="${e.ln}" data-to="${esc(c[1])}">${esc(c[1])}</button>`).join('') : ''}<span class="meta">（このままなら初出場校 1500 として計算）</span></div>`;
-  }
-  const names = entries.filter(e => !e.bye).map(e => e.name), dup = names.filter((n, i) => names.indexOf(n) !== i);
-  if (dup.length) wh += `<div>同じ学校が2回入っています：${[...new Set(dup)].map(esc).join('、')}</div>`;
-  for (const w of warns) wh += `<div>${esc(w)}</div>`;
-  $('#bkWarn').innerHTML = wh ? `<div class="warn">${wh}</div>` : '';
-  $('#bkWarn').querySelectorAll('button[data-ln]').forEach(b => b.onclick = () => {
-    const lines = $('#bkText').value.split(/\r?\n/), ln = +b.dataset.ln, e = entries.find(x => x.ln === ln);
-    lines[ln] = lines[ln].normalize('NFKC').replace(/\s+/g, '').includes(e.input) ? b.dataset.to + (e.wait ? ' *' + e.wait : '') + (e.wd ? ' 棄権' : '') : lines[ln];
-    $('#bkText').value = lines.join('\n'); bkRender(); bkSave();
-  });
-  const ok = root && !root.leaf;
-  for (const id of ['#bkProbCard', '#bkTreeCard', '#bkCsvCard']) $(id).hidden = !ok;
-  if (!ok) { $('#bkReviewCard').hidden = true; return; }
-  // 古い結果を掃除（組み合わせが変わったとき）
-  const keys = new Set(); walk(root, n => { if (!n.leaf) keys.add(n.key); });
-  for (const k of Object.keys(BK.results)) if (!keys.has(k)) delete BK.results[k];
-
-  // 確率
-  dist(root, true);
-  const realTeams = entries.filter(e => !e.bye && !e.wd);
-  const maxDepth = (() => { let m = 0; walk(root, (n, d) => { if (n.leaf) m = Math.max(m, d); }); return m; })();
-  const nSt = Math.min(STAGES.length, maxDepth);
-  const reach = {};
-  walk(root, (n, d, path) => {
-    if (!n.leaf || n.e.bye || n.e.wd) return;
-    const nm = n.e.name, full = [...path, n], row = [];
-    for (let k = 0; k < nSt; k++) {
-      const node = full[k];             // 深さ k の枠（無ければすでに通過済み）
-      row.push(!node ? 1 : node.leaf ? 1 : (node._d ? node._d[nm] || 0 : (decided(node) === nm ? 1 : 0)));
-    }
-    reach[nm] = row;
-  });
-  $('#bkProbHead').innerHTML = `<tr><th>学校</th><th class="num">レート</th>${STAGES.slice(0, nSt).map(s => `<th class="num">${s}</th>`).join('')}</tr>`;
-  const sorted = realTeams.map(e => e.name).filter(n => reach[n]).sort((a, b) => {
-    for (let k = 0; k < nSt; k++) if (reach[b][k] !== reach[a][k]) return reach[b][k] - reach[a][k]; return 0; });
-  const fmt = p => p >= 0.9995 ? '100%' : p < 0.0005 ? (p > 0 ? '<0.1%' : '–') : (p * 100).toFixed(p < 0.1 ? 1 : 0) + '%';
-  const mineSel = $('#bkMine'), prevMine = mineSel.value || (bkLoad() || {}).mine || D.highlight;
-  mineSel.innerHTML = '<option value="">（選ばない）</option>' + realTeams.map(e => e.name).sort((a, b) => a.localeCompare(b, 'ja')).map(n => `<option>${esc(n)}</option>`).join('');
-  if (realTeams.some(e => e.name === prevMine)) mineSel.value = prevMine;
-  const mine = mineSel.value;
-  $('#bkProbBody').innerHTML = sorted.map(n => `<tr class="${n === mine ? 'hl' : ''}"><td>${esc(n)}</td><td class="num rd">${findTeam(n) ? rOf(n).rating : '新'}</td>${reach[n].map(p => `<td class="num pcell">${fmt(p)}</td>`).join('')}</tr>`).join('');
-  $('#bkGoal').innerHTML = mine && reach[mine] ? `<div class="goal">${esc(mine)}：${STAGES.slice(0, nSt).map((s, k) => `${s} <b>${fmt(reach[mine][k])}</b>`).reverse().join('　')}</div>` : '';
-
-  // ブロック（ベスト8を争う枠、なければベスト4）
-  const bd = Math.max(1, Math.min(3, maxDepth - 2)), blocks = [];
-  walk(root, (n, d) => { if (d === bd && !n.leaf) blocks.push(n); });
-  const bl = blocks.map((n, i) => {
-    const ts = []; walk(n, x => { if (x.leaf && !x.e.bye && !x.e.wd) ts.push(x.e.name); });
-    const byR = ts.slice().sort((a, b) => rOf(b).rating - rOf(a).rating);
-    const top3 = byR.slice(0, 3), avg = top3.reduce((s, x) => s + rOf(x).rating, 0) / Math.max(top3.length, 1);
-    const fav = ts.slice().sort((a, b) => (reach[b][bd] || 0) - (reach[a][bd] || 0))[0];
-    return { i, fav, p: reach[fav] ? reach[fav][bd] : 0, avg, top3 };
-  });
-  const hardest = bl.reduce((m, x) => x.avg > m ? x.avg : m, 0);
-  $('#bkBlocks').innerHTML = bl.map(b => `<tr class="${b.avg === hardest && bl.length > 1 ? 'death' : ''}"><td>${String.fromCharCode(65 + b.i)}${b.avg === hardest && bl.length > 1 ? ' <span class="upset">最激戦</span>' : ''}</td>
-    <td>${esc(b.fav || '')}</td><td class="num">${fmt(b.p)}</td><td class="num">${Math.round(b.avg)}</td><td class="meta">${b.top3.map(esc).join('、')}</td></tr>`).join('');
-
-  // 組み合わせ（回戦ごと）
-  const cols = {};
-  let mno = {};
-  walk(root, n => { if (!n.leaf) (cols[n.level] = cols[n.level] || []).push(n); });
-  const levels = Object.keys(cols).map(Number).sort((a, b) => a - b), last = levels[levels.length - 1];
-  const rname = lv => lv === last ? '決勝' : lv === last - 1 ? '準決勝' : lv === last - 2 ? '準々決勝' : lv + '回戦';
-  for (const lv of levels) cols[lv].sort((a, b) => a.lo - b.lo);
-  const label = (node) => { const d = decided(node); return d === BYE ? null : d; };
-  $('#bkRounds').innerHTML = levels.map(lv => `<div class="rcol"><h3>${rname(lv)}</h3>${cols[lv].map((n, j) => {
-    const A = label(n.a), B = label(n.b), Ab = decided(n.a) === BYE, Bb = decided(n.b) === BYE;
-    const res = BK.results[n.key], wo = Ab || Bb;
-    const p = A && B ? winProb(rOf(A), rOf(B)) : null;
-    const pl = (side, name, isBye, pp) => {
-      if (isBye) return `<div class="pl tbd"><span>${wo && (n[side].leaf && n[side].e.wd) ? esc(n[side].e.name) + '（棄権）' : 'bye'}</span><span></span></div>`;
-      if (!name) return `<div class="pl tbd"><span>（未定）</span><span></span></div>`;
-      const cls = wo ? 'win' : res ? (res.side === side ? 'win' : 'lose') : '';
-      return `<div class="pl ${cls}" data-k="${n.key}" data-s="${side}"><span>${esc(name)}</span><span>${pp != null ? Math.round(pp * 100) + '%' : ''}</span></div>`;
-    };
-    return `<div class="mc ${wo ? 'wo' : ''}">${pl('a', A, Ab, p)}${pl('b', B, Bb, p != null ? 1 - p : null)}
-      <div class="ft"><span>第${j + 1}試合${wo ? '・不戦' : ''}</span>${!wo && res ? `<button data-sc="${n.key}">${res.score === 'w' ? '棄権' : '3-' + res.score.slice(2)}</button>` : ''}</div></div>`;
-  }).join('')}</div>`).join('');
-  $('#bkRounds').querySelectorAll('.pl[data-k]').forEach(el => el.onclick = () => {
-    const k = el.dataset.k, s = el.dataset.s, cur = BK.results[k];
-    if (cur && cur.side === s) delete BK.results[k]; else BK.results[k] = { side: s, score: cur ? cur.score : '3-0' };
-    // 上の回戦で、出場校が変わった結果は消す
-    walk(BK.tree, n => { if (!n.leaf && BK.results[n.key]) { const A = decided(n.a), B = decided(n.b); if (!A || !B) delete BK.results[n.key]; } });
-    bkSave(); bkRender();
-  });
-  $('#bkRounds').querySelectorAll('button[data-sc]').forEach(b => b.onclick = () => {
-    const r = BK.results[b.dataset.sc], seq = ['3-0', '3-1', '3-2', 'w'];
-    r.score = seq[(seq.indexOf(r.score) + 1) % seq.length]; bkSave(); bkRender();
-  });
-
-  // 振り返り：全試合が終わったら「大会前の予想」、途中なら「終わった試合ごとの予想」と比べる
-  let total = 0, nRes = 0; const act = {}, perExp = {};
-  walk(root, n => { if (n.leaf) return; const A = decided(n.a), B = decided(n.b), r = BK.results[n.key];
-    if (A === BYE || B === BYE) return; total++;
-    if (A && B && r && r.score !== 'w') { nRes++; const w = r.side === 'a' ? A : B; act[w] = (act[w] || 0) + 1;
-      const p = winProb(rOf(A), rOf(B)); perExp[A] = (perExp[A] || 0) + p; perExp[B] = (perExp[B] || 0) + 1 - p; }
-    else if (A && B && r) total--; });
-  const complete = nRes > 0 && nRes >= total;
-  const exp = {}; if (complete) { dist(root, false, exp); dist(root, true); }
-  $('#bkReviewCard').hidden = !nRes;
-  if (nRes) {
-    $('#bkReviewNote').textContent = complete
-      ? '大会前の予想（この組み合わせで、ふつうなら何勝できたか）と、実際の勝利数の比較です。'
-      : `途中経過です（${nRes}/${total}試合）。終わった試合それぞれの勝つ確率を足した値と、実際の勝利数を比べています。全試合を入れると、組み合わせ全体での比較に変わります。`;
-    const base = complete ? exp : perExp;
-    const rows = realTeams.map(e => e.name).filter(n => complete || perExp[n] != null)
-      .map(n => ({ n, e: base[n] || 0, a: act[n] || 0 })).map(x => ({ ...x, d: x.a - x.e })).sort((a, b) => b.d - a.d);
-    $('#bkReview').innerHTML = rows.map(x => `<tr class="${x.n === mine ? 'hl' : ''}"><td>${esc(x.n)}</td><td class="num">${x.e.toFixed(1)}</td><td class="num">${x.a}</td>
-      <td class="num ${x.d >= 0.05 ? 'up' : x.d <= -0.05 ? 'down' : ''}">${x.d > 0 ? '+' : ''}${x.d.toFixed(1)}</td></tr>`).join('');
-  }
-
-  // CSV
-  const ev = $('#bkEvent').value.trim(), dt = $('#bkDate').value, note = $('#bkNote').value.trim();
-  const lines = [], dups = []; let open = 0;
-  const nk = (d, e, x, y) => [d, e.normalize('NFKC').replace(/\s+/g, ''), ...[x, y].sort()].join('|');
-  const have = {}; for (const m of D.matches) { const k = nk(m.date, m.event, m.a, m.b); have[k] = (have[k] || 0) + 1; }
-  const usedK = {};
-  for (const lv of levels) for (const n of cols[lv]) {
-    const A = decided(n.a), B = decided(n.b);
-    if (A === BYE || B === BYE) continue;
-    const r = BK.results[n.key];
-    if (!A || !B || !r) { open++; continue; }
-    if (r.score === 'w') continue;
-    const w = r.side === 'a' ? A : B, l = r.side === 'a' ? B : A;
-    const k = nk(dt, ev, w, l);
-    if (dt && ev && (have[k] || 0) > (usedK[k] || 0)) { usedK[k] = (usedK[k] || 0) + 1; dups.push(`${rname(lv)}：${w} 3-${r.score.slice(2)} ${l}`); continue; }
-    lines.push([dt, ev, w, l, 3, r.score.slice(2), [note, rname(lv) === '決勝' || rname(lv) === '準決勝' ? rname(lv) : ''].filter(Boolean).join('・')].join(','));
-  }
-  const miss = [!ev && '大会名', !dt && '日付'].filter(Boolean);
-  $('#bkCsvInfo').innerHTML = `${lines.length}試合ぶん${dups.length ? `（${dups.length}試合はすでに登録済みのため除きました）` : ''}${open ? `（結果が未入力の試合が ${open} 試合あります）` : ''}${miss.length ? `　<b style="color:var(--lose)">${miss.join('と')}を入れてください</b>` : ''}`;
-  $('#bkCsv').value = lines.join('\n');
-  $('#bkDup').innerHTML = dups.length ? `<details><summary>登録済みとして除いた試合（${dups.length}）</summary>
-    <div style="margin-top:4px">同じ日付・大会名・2校の試合がすでにデータにあるものです。同じ大会で同じ2校が2回対戦した場合も、登録されている回数ぶんは除いています。</div>
-    <ul style="margin:4px 0 0;padding-left:1.2em">${dups.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : '';
+function setBkMode(m){
+  $('#bkNext').hidden = m !== 'next'; $('#bkFree').hidden = m !== 'free';
+  document.querySelectorAll('#bkSwitch button').forEach(b => b.classList.toggle('pri', b.dataset.m === m));
 }
 
-function bkInit(schoolListAll, eventNames){
-  const saved = bkLoad();
-  if (saved) { $('#bkText').value = saved.text || ''; $('#bkEvent').value = saved.event || ''; $('#bkDate').value = saved.date || ''; $('#bkNote').value = saved.note || ''; BK.results = saved.results || {}; }
-  attachSuggest($('#bkEvent'), eventNames.map(e => [e, '']));
-  let tm = null;
-  const later = () => { clearTimeout(tm); tm = setTimeout(() => { bkRender(); bkSave(); }, 300); };
-  $('#bkText').addEventListener('input', later);
-  for (const id of ['#bkEvent', '#bkDate', '#bkNote']) $(id).addEventListener('input', later);
-  $('#bkMine').onchange = () => { bkSave(); bkRender(); };
-  $('#bkCopy').onclick = async () => {
-    const ta = $('#bkCsv'); let ok = false;
-    try { await navigator.clipboard.writeText(ta.value); ok = true; } catch (e) { ta.removeAttribute('readonly'); ta.select(); ta.setSelectionRange(0, ta.value.length); try { ok = document.execCommand('copy'); } catch (e2) {} ta.setAttribute('readonly', ''); }
-    $('#bkCopy').textContent = ok ? 'コピーしました' : '長押しでコピーしてください'; setTimeout(() => $('#bkCopy').textContent = 'コピー', 2000);
-  };
-  let armed = null;
-  $('#bkClear').onclick = () => {
-    if (!Object.keys(BK.results).length) return;
-    if (!armed) { $('#bkClear').textContent = 'もう一度押すと消えます'; armed = setTimeout(() => { armed = null; $('#bkClear').textContent = '結果をすべて消す'; }, 3000); return; }
-    clearTimeout(armed); armed = null; $('#bkClear').textContent = '結果をすべて消す'; BK.results = {}; bkSave(); bkRender();
-  };
-  bkRender();
+/* ===== お知らせ ===== */
+function loadNotice(){
+  fetch('data/notice.json', {cache: 'no-cache'}).then(r => r.ok ? r.json() : null).catch(() => null).then(n => {
+    if (!n || !n.active || !String(n.text || '').trim()) return;
+    const box = $('#notice');
+    box.innerHTML = `<b>お知らせ</b>${n.updated ? `<span class="meta">（${esc(n.updated)}）</span>` : ''}<div>${esc(n.text).replace(/\n/g, '<br>')}</div>`;
+    box.hidden = false;
+  });
 }
 
 function renderCalibration(){
@@ -905,7 +663,7 @@ fetch('data/ratings.json', {cache: 'no-cache'}).then(r => r.json()).then(d => {
   $('#pa').oninput = renderPredict; $('#pb').oninput = renderPredict; renderPredict();
   $('#q').oninput = renderRank; $('#showAll').onchange = renderRank;
   $('#season').onchange = renderMatches; $('#mq').oninput = renderMatches;
-  renderRank(); renderMatches(); route();
+  renderRank(); renderMatches(); route(); loadNotice();
 }).catch(e => { $('#meta').textContent = 'データを読み込めませんでした：' + e; });
 </script>
 </body>

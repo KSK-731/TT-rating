@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>管理者用ページ</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="レート管理">
+<meta name="theme-color" content="#0f7b5f">
+<script src="bracket.js"></script>
+<style>
+:root{
+  --bg:#f6f5f1; --card:#ffffff; --ink:#1d2321; --sub:#66706c; --line:#e2e0d9;
+  --accent:#0f7b5f; --accent-soft:#e3f2ec; --win:#0f7b5f; --lose:#b5432f; --hl:#fff4d6;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#141816; --card:#1d2220; --ink:#e8ece9; --sub:#9aa5a0; --line:#2e3532;
+    --accent:#4cc39c; --accent-soft:#1f3a31; --win:#4cc39c; --lose:#e57a62; --hl:#3a3420;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px 48px}
+header{padding:28px 0 12px}
+h1{font-size:1.5rem;margin:0 0 4px;letter-spacing:.02em}
+.meta{color:var(--sub);font-size:.85rem}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:16px 0 20px;overflow-x:auto}
+nav button{background:none;border:0;padding:10px 14px;font:inherit;color:var(--sub);cursor:pointer;
+  border-bottom:3px solid transparent;white-space:nowrap}
+nav button.on{color:var(--ink);border-color:var(--accent);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.vs{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.vs input{flex:1 1 160px;min-width:0}
+.vsmark{color:var(--sub);font-weight:600}
+.bar{display:flex;height:34px;border-radius:6px;overflow:hidden;margin:8px 0 6px;font-weight:700;font-size:.9rem}
+.bar div{display:flex;align-items:center;padding:0 10px;color:#fff;white-space:nowrap;min-width:0}
+.bar .ba{background:var(--accent)} .bar .bb{background:var(--lose);justify-content:flex-end}
+.pnames{display:flex;justify-content:space-between;gap:12px;font-size:.9rem}
+.pnames span{color:var(--sub);font-size:.8rem}
+.ac{position:relative;display:inline-block;flex:1 1 180px;min-width:0;max-width:100%}
+.ac input{width:100%}
+.vs .ac{flex:1 1 160px}
+.sugg{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:20;background:var(--card);border:1px solid var(--line);
+  border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sugg div{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:.95rem}
+.sugg div:last-child{border-bottom:0}
+.sugg div:hover,.sugg div.on{background:var(--accent-soft)}
+.sugg small{color:var(--sub);margin-left:6px}
+.tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px}
+input[type=search],select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:6px;
+  background:var(--card);color:var(--ink)}
+label{font-size:.9rem;color:var(--sub)}
+.tbl{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{color:var(--sub);font-weight:500;font-size:.8rem}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--accent-soft)}
+tr.hl td{background:var(--hl)}
+tr.inactive td{color:var(--sub)}
+.rank{font-weight:700;width:2.5em}
+.rd{color:var(--sub);font-size:.82rem}
+.w{color:var(--win);font-weight:600}.l{color:var(--lose);font-weight:600}
+.upset{font-size:.72rem;background:var(--hl);border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-left:4px}
+.back{background:none;border:0;color:var(--accent);font:inherit;cursor:pointer;padding:0;margin-bottom:12px}
+.big{font-size:2.2rem;font-weight:700;font-variant-numeric:tabular-nums}
+.kv{display:flex;flex-wrap:wrap;gap:24px;margin:8px 0 16px}
+.kv div>span:first-child{display:block;color:var(--sub);font-size:.78rem}
+.kv .big{line-height:1.1}
+.chart{position:relative;height:300px;margin:8px 0 20px}
+h2{font-size:1.1rem;margin:20px 0 8px}
+.about p,.about li{max-width:46em}
+.hidden{display:none}
+.notice{background:var(--hl);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;margin:8px 0 4px;line-height:1.7}
+.notice .meta{margin-left:6px;font-size:.8rem}
+#bkSwitch .btn{font:inherit;padding:6px 14px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);cursor:pointer}
+#bkSwitch .btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.chg{font-size:.8rem;font-variant-numeric:tabular-nums;width:3.2em}
+.up{color:var(--win)} .down{color:var(--lose)} .new{color:var(--sub);font-size:.72rem}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:4px 0 0;font-size:.88rem}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:18px;height:3px;border-radius:2px}
+.cmp{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:8px}
+.cmp .ac{flex:1 1 auto;width:auto;min-width:0}
+.cmp .slot{display:flex;align-items:center;gap:6px}
+.cmp .slot i{flex:none;width:12px;height:12px;border-radius:50%}
+.evh{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.evh h2{margin-top:8px}
+.bk textarea{width:100%;min-height:220px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+.bk input[type=date],.bk input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+.bk .row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;align-items:center}
+.bk .row .ac{flex:2 1 220px}
+.warn{background:var(--hl);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:10px 0;font-size:.9rem}
+.warn button,.btn{font:inherit;font-size:.85rem;padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);cursor:pointer;margin:2px 4px 2px 0}
+.btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.rounds{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+.rcol{flex:0 0 200px}
+.rcol h3{font-size:.85rem;color:var(--sub);margin:0 0 6px;font-weight:600}
+.mc{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;overflow:hidden;font-size:.88rem;background:var(--card)}
+.mc .pl{display:flex;justify-content:space-between;gap:6px;padding:7px 8px;cursor:pointer;border-bottom:1px solid var(--line)}
+.mc .pl:last-of-type{border-bottom:0}
+.mc .pl.win{background:var(--accent-soft);font-weight:700}
+.mc .pl.lose{color:var(--sub)}
+.mc .pl.tbd{color:var(--sub);cursor:default}
+.mc .pl span:last-child{color:var(--sub);font-variant-numeric:tabular-nums}
+.mc .ft{display:flex;justify-content:space-between;align-items:center;padding:3px 8px;background:var(--bg);font-size:.75rem;color:var(--sub)}
+.mc .ft button{margin:0;padding:2px 8px;font-size:.78rem}
+.mc.wo{opacity:.6}
+.goal{font-size:1rem;margin:6px 0 12px}
+.goal b{font-size:1.15rem}
+.pcell{font-variant-numeric:tabular-nums}
+.death td{background:var(--hl)}
+a{color:var(--accent)}
+
+.adm .card{margin-bottom:16px}
+.adm h2{font-size:1.1rem}
+.adm label.blk{display:block;font-size:.85rem;color:var(--sub);margin:8px 0 4px}
+.adm input[type=text],.adm input[type=password],.adm textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);width:100%;box-sizing:border-box}
+.adm textarea{min-height:110px}
+.adm .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+.adm .btn{font:inherit;font-size:.92rem;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer}
+.adm .btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.adm .btn[disabled]{opacity:.5;cursor:default}
+.adm .st{font-size:.9rem;margin-top:8px;min-height:1.4em}
+.adm .ok{color:var(--win);font-weight:600}.adm .ng{color:var(--lose);font-weight:600}
+.adm .steps li{margin:6px 0}
+.adm code{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:.88em}
+.adm .pill{display:inline-block;font-size:.78rem;border-radius:999px;padding:1px 10px;border:1px solid var(--line);margin-left:6px;vertical-align:2px}
+.adm .pill.on{background:var(--accent-soft);color:var(--win);border-color:transparent}
+.adm .newsch label{display:flex;gap:8px;align-items:center;margin:4px 0}
+.adm details summary{cursor:pointer;color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap adm">
+  <header>
+    <h1>管理者用ページ</h1>
+    <div class="meta">保存した内容は、1〜2分で<a href="./">公開ページ</a>に反映されます。</div>
+  </header>
+
+  <!-- 1. 鍵 -->
+  <div class="card" id="cKey">
+    <h2 style="margin-top:0">1. 鍵の設定 <span class="pill" id="keyPill">未設定</span></h2>
+    <div id="keyInfo" class="st"></div>
+    <details id="keyBox">
+      <summary>鍵を設定する・作り直す</summary>
+      <ol class="steps">
+        <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub の「新しい鍵」画面を開く</a>（GitHub にログインした状態で開きます）。</li>
+        <li><b>Token name</b>（名前）：<code>卓球レーティング管理</code> など、分かる名前を入れます。</li>
+        <li><b>Expiration</b>（期限）：いちばん長い期間（1年）を選びます。期限が来たら、この手順で作り直します。</li>
+        <li><b>Repository access</b>：<b>Only select repositories</b> を選び、<code id="repoName1">TT-rating</code> だけを選びます。</li>
+        <li><b>Permissions</b>（権限）：<b>Contents</b> を <b>Read and write</b>、<b>Actions</b> を <b>Read-only</b> にします。「Add permissions」ボタンがある画面では、そこから Contents と Actions を選びます。ほかはそのままで構いません。</li>
+        <li>いちばん下の <b>Generate token</b> を押し、表示された <code>github_pat_</code> で始まる文字をコピーします（この画面を閉じると二度と表示されません）。</li>
+        <li>下の欄に貼り付けて「保存して確認」を押します。</li>
+      </ol>
+      <details style="margin:8px 0">
+        <summary>リポジトリの持ち主ではない人（引き継いだ人など）の場合</summary>
+        <p class="meta" style="margin:6px 0 0">上の方法の鍵は、自分が持ち主のリポジトリにしか使えません。招待されて編集している場合は、次の「従来の鍵」を作ります。</p>
+        <ol class="steps">
+          <li><a href="https://github.com/settings/tokens/new?scopes=public_repo&amp;description=%E5%8D%93%E7%90%83%E3%83%AC%E3%83%BC%E3%83%86%E3%82%A3%E3%83%B3%E3%82%B0%E7%AE%A1%E7%90%86" target="_blank" rel="noopener">GitHub の「従来の鍵」画面を開く</a>（名前と権限が入った状態で開きます）。</li>
+          <li><b>Expiration</b>（期限）：<b>Custom</b> を選び、1年後の日付にします。</li>
+          <li><b>Select scopes</b>：<b>public_repo</b> にだけチェックが入っていることを確かめます。</li>
+          <li>いちばん下の <b>Generate token</b> を押し、表示された <code>ghp_</code> で始まる文字をコピーして、下の欄に貼り付けます。</li>
+        </ol>
+      </details>
+      <label class="blk">リポジトリ（持ち主/名前）</label>
+      <input type="text" id="repo" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="KSK-731/TT-rating">
+      <label class="blk">鍵</label>
+      <input type="password" id="token" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_… または ghp_…">
+      <div class="row">
+        <button class="btn pri" id="keySave">保存して確認</button>
+        <button class="btn" id="keyDel">この端末から鍵を消す</button>
+      </div>
+      <p class="meta">鍵はこの端末（このブラウザ）の中にだけ保存され、公開ページやほかの人には送られません。端末をなくしたときは、GitHub の <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener">鍵の一覧</a> でこの鍵を削除（Delete）してください。</p>
+    </details>
+  </div>
+
+  <!-- 2. お知らせ -->
+  <div class="card">
+    <h2 style="margin-top:0">2. お知らせ <span class="pill" id="noticePill">非表示</span></h2>
+    <textarea id="noticeText" placeholder="例：新人大会は11月7日（土）、大浜だいしんアリーナで行われます。"></textarea>
+    <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="noticeOn"> 公開ページの上に表示する</label>
+    <div class="row"><button class="btn pri" id="noticeSave">保存する</button></div>
+    <div class="st" id="noticeSt"></div>
+  </div>
+
+  <!-- 3. 次の大会 -->
+  <div class="card">
+    <h2 style="margin-top:0">3. 次の大会のトーナメント表 <span class="pill" id="nextPill">非公開</span></h2>
+    <p class="meta" style="margin-top:0">ここで作った組み合わせと結果が、公開ページの「トーナメント」→「次の大会」に表示されます（見る人は変更できません）。入力中の内容は、この端末に下書きとして自動で保存されます。</p>
+    <div class="row" style="margin-top:0">
+      <button class="btn" id="nextLoad">公開中の内容を読み込む</button>
+    </div>
+  </div>
+  <div id="bkAdmin"></div>
+  <div class="card">
+    <div class="row" style="margin-top:0">
+      <button class="btn pri" id="nextPub">公開ページに表示する（組み合わせ・結果を保存）</button>
+      <button class="btn" id="nextHide">表示をやめる</button>
+    </div>
+    <p class="meta">大会中に結果を入れて、もう一度「公開ページに表示する」を押すと、速報として公開ページの表に反映されます。</p>
+    <div class="st" id="nextSt"></div>
+  </div>
+
+  <!-- 4. 試合結果を保存 -->
+  <div class="card">
+    <h2 style="margin-top:0">4. 試合結果を matches.csv に保存</h2>
+    <div id="csvInfo"></div>
+    <div id="newSch" class="newsch"></div>
+    <details id="csvPrev" style="margin-top:8px"><summary>追加する行を見る</summary><textarea id="csvLines" readonly style="min-height:160px;margin-top:6px"></textarea></details>
+    <div id="csvDup" class="meta" style="margin-top:6px"></div>
+    <div class="row"><button class="btn pri" id="csvSave">matches.csv に追加して保存</button></div>
+    <div class="st" id="csvSt"></div>
+  </div>
+
+  <!-- 5. 登録済みの試合 -->
+  <div class="card">
+    <h2 style="margin-top:0">5. 登録済みの試合を直す・消す</h2>
+    <p class="meta" style="margin-top:0">matches.csv に登録された試合です。学校名や大会名で探せます（新しいものから50件まで表示）。直したり消したりしたあと、下の「変更を保存」を押すと保存されます。</p>
+    <input type="text" id="mSearch" autocomplete="off" placeholder="学校名・大会名・日付で探す">
+    <div class="tbl" style="margin-top:8px"><table><thead><tr><th>日付</th><th>大会</th><th>試合</th><th>備考</th><th></th></tr></thead><tbody id="mBody"></tbody></table></div>
+    <div id="mPend" class="st"></div>
+    <div class="row"><button class="btn pri" id="mSave">変更を保存</button><button class="btn" id="mUndo">変更を取り消す</button></div>
+    <div class="st" id="mSt"></div>
+  </div>
+
+  <!-- 6. 学校 -->
+  <div class="card">
+    <h2 style="margin-top:0">6. 学校の一覧</h2>
+    <p class="meta" style="margin-top:0">・<b>名前を直す</b>：打ち間違いを直します。teams.csv と、その学校のすべての試合の名前がまとめて変わります。<br>
+      ・<b>旧校名を登録</b>：校名変更や略し方の違いを登録します（例：「堺」→ 市立堺）。過去の試合はそのままで、同じ学校として数えます。<br>
+      ・<b>消す</b>：試合が1つもない学校だけ消せます。</p>
+    <div class="row" style="margin-top:0">
+      <input type="text" id="tSearch" autocomplete="off" placeholder="学校名で探す" style="flex:2 1 200px;width:auto">
+      <input type="text" id="tNew" autocomplete="off" placeholder="新しい学校名" style="flex:1 1 140px;width:auto">
+      <button class="btn" id="tAdd">学校を追加</button>
+    </div>
+    <div class="tbl" style="margin-top:8px"><table><thead><tr><th>学校</th><th class="num">試合</th><th>旧校名など</th><th></th></tr></thead><tbody id="tBody"></tbody></table></div>
+    <div class="st" id="tSt"></div>
+  </div>
+
+  <!-- 7. 設定 -->
+  <div class="card">
+    <h2 style="margin-top:0">7. 設定</h2>
+    <label class="blk">サイトの名前</label><input type="text" id="cfTitle">
+    <label class="blk">ランキングで色を付ける学校（自校など）</label><select id="cfHl" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)"></select>
+    <label class="blk">順位を付ける基準（±RD がこの値以下の学校だけに順位を付けます。小さいほど厳しい。目安 120〜200）</label><input type="text" id="cfRd" inputmode="numeric">
+    <label class="blk">ランキングに載せる期間（この年数以内に出場した学校）</label><input type="text" id="cfYears" inputmode="numeric">
+    <label class="blk">年度の始まりの月</label><input type="text" id="cfMonth" inputmode="numeric">
+    <label class="blk">年度替わりに不確かさ（RD）を広げる量（0 で広げない。目安 30〜50）</label><input type="text" id="cfInc" inputmode="numeric">
+    <div class="row"><button class="btn pri" id="cfSave">設定を保存</button></div>
+    <p class="meta">設定を変えると、全期間を最初から計算し直します。</p>
+    <div class="st" id="cfSt"></div>
+  </div>
+
+  <p class="meta">このページへのリンクは公開ページにはありません。ブックマークするか、共有ボタンから「ホーム画面に追加」しておくと便利です。</p>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+let D = null, BK = null, teamsCsv = null, matchesCsv = null;
+const noKeyRow = n => `<tr><td colspan="${n}" class="meta">鍵を設定すると表示されます。</td></tr>`;
+
+const findTeam = v => { v = (v || '').trim(); if (!v || !D) return null;
+  return D.teams.find(t => t.name === v) || D.teams.find(t => t.aliases.includes(v)) || null; };
+function winProb(A, B){
+  const S = 173.7178, phi = Math.hypot(A.rd, B.rd) / S;
+  const g = 1 / Math.sqrt(1 + 3 * phi * phi / (Math.PI * Math.PI));
+  return 1 / (1 + Math.exp(-g * (A.rating - B.rating) / S));
+}
+function attachSuggest(input, list){
+  const wrap = document.createElement('span'); wrap.className = 'ac';
+  input.parentNode.insertBefore(wrap, input); wrap.appendChild(input);
+  const box = document.createElement('div'); box.className = 'sugg'; box.hidden = true; wrap.appendChild(box);
+  let items = [], idx = -1;
+  const pick = v => { input.value = v; box.hidden = true; input.dispatchEvent(new Event('input')); input.blur(); };
+  const update = () => {
+    const q = input.value.trim();
+    items = (q ? list.filter(([n]) => n.includes(q)) : list.slice())
+      .sort((a, b) => (q && a[0].startsWith(q) ? 0 : 1) - (q && b[0].startsWith(q) ? 0 : 1)).slice(0, 50);
+    if (q && items.length === 1 && items[0][0] === q) items = [];
+    idx = -1;
+    box.innerHTML = items.map(([n, sub], i) => `<div data-i="${i}">${esc(n)}${sub ? `<small>${esc(sub)}</small>` : ''}</div>`).join('');
+    box.hidden = !items.length || document.activeElement !== input;
+  };
+  box.addEventListener('pointerdown', e => e.preventDefault());
+  box.addEventListener('mousedown', e => e.preventDefault());
+  box.addEventListener('click', e => { const d = e.target.closest('[data-i]'); if (d) pick(items[+d.dataset.i][0]); });
+  input.addEventListener('focus', update);
+  input.addEventListener('input', update);
+  input.addEventListener('compositionupdate', () => setTimeout(update, 0));
+  input.addEventListener('compositionend', () => setTimeout(update, 0));
+  input.addEventListener('blur', () => setTimeout(() => { box.hidden = true; }, 150));
+  input.addEventListener('keydown', e => {
+    if (box.hidden || e.isComposing) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); idx = (idx + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      [...box.children].forEach((d, i) => d.classList.toggle('on', i === idx)); box.children[idx].scrollIntoView({block: 'nearest'});
+    } else if (e.key === 'Enter' && idx >= 0) { e.preventDefault(); pick(items[idx][0]); }
+    else if (e.key === 'Escape') box.hidden = true;
+  });
+}
+
+/* ===== GitHub とのやり取り ===== */
+const CFG = Object.assign({ repo: '', token: '' }, lsGet('tt-admin') || {});
+if (!CFG.repo) {
+  const m = location.hostname.match(/^([^.]+)\.github\.io$/i), seg = location.pathname.split('/').filter(Boolean)[0];
+  if (m && seg && !/\.html$/.test(seg)) CFG.repo = `${m[1]}/${seg}`;
+}
+function b64encode(text){ const by = new TextEncoder().encode(text); let s = ''; for (let i = 0; i < by.length; i += 0x8000) s += String.fromCharCode.apply(null, by.subarray(i, i + 0x8000)); return btoa(s); }
+function b64decode(b64){ const bin = atob((b64 || '').replace(/\s/g, '')), by = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) by[i] = bin.charCodeAt(i);
+  try { return new TextDecoder('utf-8', {fatal: true}).decode(by); } catch (e) { return new TextDecoder('shift_jis').decode(by); } }
+class GHError extends Error { constructor(status, msg){ super(msg); this.status = status; } }
+function explain(e){
+  if (!e || e.status === undefined) return '通信できませんでした。インターネットにつながっているか確かめてください。';
+  if (e.status === 401) return '鍵が正しくないか、期限が切れています。「鍵を設定する・作り直す」の手順で作り直してください。';
+  if (e.status === 403) return '鍵の権限が足りません。Contents を Read and write にした鍵か確かめてください。';
+  if (e.status === 404) return 'リポジトリが見つかりません。リポジトリ名と、鍵を作るときに TT-rating を選んだかを確かめてください。';
+  if (e.status === 409 || e.status === 422) return 'ほかの保存と重なりました。もう一度押してください。';
+  return `GitHub からエラーが返りました（${e.status}）。少し待ってからもう一度試してください。`;
+}
+async function gh(method, path, body){
+  let r;
+  try {
+    r = await fetch('https://api.github.com' + path, { method, cache: 'no-store',
+      headers: Object.assign({ 'Accept': 'application/vnd.github+json', 'Authorization': 'Bearer ' + CFG.token, 'X-GitHub-Api-Version': '2022-11-28' },
+        body ? { 'Content-Type': 'application/json' } : {}),
+      body: body ? JSON.stringify(body) : undefined });
+  } catch (e) { throw new GHError(undefined, String(e)); }
+  if (!r.ok) throw new GHError(r.status, await r.text().catch(() => ''));
+  return r.status === 204 ? null : r.json();
+}
+const repoPath = () => '/repos/' + CFG.repo.split('/').map(encodeURIComponent).join('/');
+async function getFile(path){
+  try { const j = await gh('GET', `${repoPath()}/contents/${encodeURIComponent(path)}?t=${Date.now()}`); return { sha: j.sha, text: b64decode(j.content) }; }
+  catch (e) { if (e.status === 404) return { sha: null, text: '' }; throw e; }
+}
+async function putFile(path, text, message, sha){
+  const body = { message, content: b64encode(text) }; if (sha) body.sha = sha;
+  const j = await gh('PUT', `${repoPath()}/contents/${encodeURIComponent(path)}`, body);
+  return j.commit && j.commit.sha;
+}
+/** 最新の内容を読み、change(text) で書き換えて保存する（重なったら1回だけやり直す） */
+async function update(path, change, message){
+  for (let i = 0; i < 2; i++) {
+    const f = await getFile(path), nt = change(f.text);
+    if (nt === null) return null;
+    try { return await putFile(path, nt, message, f.sha); }
+    catch (e) { if ((e.status === 409 || e.status === 422) && i === 0) continue; throw e; }
+  }
+}
+/** 保存のあと、サイトの計算が終わるまで見守る */
+async function watchBuild(sha, el, done){
+  const t0 = Date.now();
+  const tick = async () => {
+    let run = null;
+    try { const j = await gh('GET', `${repoPath()}/actions/runs?head_sha=${sha}&per_page=1`); run = j.workflow_runs && j.workflow_runs[0]; }
+    catch (e) {
+      el.innerHTML = `<span class="ok">✓ 保存しました。</span> 1〜2分で公開ページに反映されます。<span class="meta">（計算の状況は鍵の Actions 権限がないため確認できません）</span>`; return;
+    }
+    const sec = Math.round((Date.now() - t0) / 1000);
+    if (run && run.status === 'completed') {
+      if (run.conclusion === 'success') { el.innerHTML = `<span class="ok">✓ 保存して、公開ページに反映しました。</span>`; if (done) done(); }
+      else el.innerHTML = `<span class="ng">× 保存はできましたが、計算でエラーが出ました。</span> <a href="${esc(run.html_url)}" target="_blank" rel="noopener">エラーの内容を見る</a>（「レーティング計算」の行を開くと原因が出ます）`;
+      return;
+    }
+    el.innerHTML = `<span class="ok">✓ 保存しました。</span> 公開ページを更新しています…（${sec}秒）`;
+    if (Date.now() - t0 < 6 * 60 * 1000) setTimeout(tick, 6000);
+    else el.innerHTML = `<span class="ok">✓ 保存しました。</span> 反映に時間がかかっています。リポジトリの Actions タブで確認してください。`;
+  };
+  setTimeout(tick, 4000);
+}
+const busy = (btn, on) => { btn.disabled = on; };
+
+/* ===== 1. 鍵 ===== */
+async function checkKey(){
+  $('#repo').value = CFG.repo; $('#repoName1').textContent = (CFG.repo.split('/')[1] || 'TT-rating');
+  if (!CFG.token) { $('#keyPill').textContent = '未設定'; $('#keyPill').classList.remove('on'); $('#keyInfo').innerHTML = '保存するには、最初に鍵を設定します。下の「鍵を設定する」を開いてください。'; $('#keyBox').open = true; return false; }
+  try {
+    const j = await gh('GET', repoPath());
+    if (!(j.permissions && j.permissions.push)) throw new GHError(403, '');
+    $('#keyPill').textContent = '設定済み'; $('#keyPill').classList.add('on');
+    $('#keyInfo').innerHTML = `<span class="ok">✓ ${esc(j.full_name)} に保存できます。</span>`;
+    await refreshFiles(); return true;
+  } catch (e) {
+    $('#keyPill').textContent = '要確認'; $('#keyPill').classList.remove('on');
+    $('#keyInfo').innerHTML = `<span class="ng">× ${esc(explain(e))}</span>`; $('#keyBox').open = true; return false;
+  }
+}
+let aliasesCsv = null, configJson = null;
+async function refreshFiles(){
+  try {
+    const [t, m, a, c] = await Promise.all(['teams.csv', 'matches.csv', 'aliases.csv', 'config.json'].map(getFile));
+    teamsCsv = t.text; matchesCsv = m.text; aliasesCsv = a.text;
+    try { configJson = JSON.parse(c.text || '{}'); } catch (e) { configJson = {}; }
+  } catch (e) {}
+  renderCsv(); renderMatchesAdmin(); renderTeamsAdmin(); renderConfig();
+}
+$('#keySave').onclick = async () => {
+  CFG.repo = $('#repo').value.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\/+$/, '');
+  const t = $('#token').value.trim(); if (t) CFG.token = t;
+  lsSet('tt-admin', CFG); $('#token').value = '';
+  busy($('#keySave'), true); $('#keyInfo').textContent = '確認しています…';
+  if (await checkKey()) $('#keyBox').open = false;
+  busy($('#keySave'), false);
+};
+let delArmed = null;
+$('#keyDel').onclick = () => {
+  if (!delArmed) { $('#keyDel').textContent = 'もう一度押すと消えます'; delArmed = setTimeout(() => { delArmed = null; $('#keyDel').textContent = 'この端末から鍵を消す'; }, 3000); return; }
+  clearTimeout(delArmed); delArmed = null; $('#keyDel').textContent = 'この端末から鍵を消す';
+  CFG.token = ''; lsSet('tt-admin', CFG); checkKey();
+};
+function needKey(el){ if (CFG.token) return false; el.innerHTML = '<span class="ng">先に「1. 鍵の設定」をしてください。</span>'; $('#cKey').scrollIntoView({behavior: 'smooth'}); return true; }
+
+/* ===== 2. お知らせ ===== */
+function showNotice(n){ $('#noticeText').value = n.text || ''; $('#noticeOn').checked = !!n.active; setPill('#noticePill', n.active && n.text, '表示中', '非表示'); }
+function setPill(sel, on, a, b){ const p = $(sel); p.textContent = on ? a : b; p.classList.toggle('on', !!on); }
+$('#noticeSave').onclick = async () => {
+  const st = $('#noticeSt'); if (needKey(st)) return;
+  const n = { active: $('#noticeOn').checked, text: $('#noticeText').value.trim(), updated: today() };
+  busy($('#noticeSave'), true); st.textContent = '保存しています…';
+  try { const sha = await update('notice.json', () => JSON.stringify(n, null, 2) + '\n', 'お知らせを更新'); setPill('#noticePill', n.active && n.text, '表示中', '非表示'); watchBuild(sha, st); }
+  catch (e) { st.innerHTML = `<span class="ng">× ${esc(explain(e))}</span>`; }
+  busy($('#noticeSave'), false);
+};
+
+/* ===== 3. 次の大会 ===== */
+const DRAFT = 'tt-admin-draft';
+let published = null;
+function hashId(s){ let h = 2166136261; for (const c of s) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+function mountBracket(state){
+  const ctx = { findTeam, winProb, esc, attachSuggest, highlight: D.highlight,
+    allNames: D.teams.flatMap(t => [[t.name, t.name], ...t.aliases.map(a => [a, t.name])]),
+    eventNames: [...new Set(D.matches.map(m => m.event))] };
+  BK = TTBracket($('#bkAdmin'), { mode: 'admin', ctx, state, onChange: st => { lsSet(DRAFT, st); renderCsv(); } });
+  renderCsv();
+}
+let loadArmed = null;
+$('#nextLoad').onclick = () => {
+  if (!published || !published.text) { $('#nextSt').textContent = '公開中の組み合わせはありません。'; return; }
+  if (!loadArmed) { $('#nextLoad').textContent = '今の下書きは消えます。もう一度押すと読み込みます'; loadArmed = setTimeout(() => { loadArmed = null; $('#nextLoad').textContent = '公開中の内容を読み込む'; }, 4000); return; }
+  clearTimeout(loadArmed); loadArmed = null; $('#nextLoad').textContent = '公開中の内容を読み込む';
+  const st = { text: published.text, event: published.event, date: published.date, note: published.note, results: published.results || {} };
+  lsSet(DRAFT, st); mountBracket(st); $('#nextSt').textContent = '公開中の内容を読み込みました。';
+};
+$('#nextPub').onclick = async () => {
+  const st = $('#nextSt'); if (needKey(st)) return;
+  const s = BK.getState();
+  if (!s.text.trim()) { st.innerHTML = '<span class="ng">組み合わせが空です。</span>'; return; }
+  if (!s.event.trim()) { st.innerHTML = '<span class="ng">大会名を入れてください。</span>'; return; }
+  const nx = { active: true, id: hashId([s.text, s.event, s.date].join('|')), event: s.event.trim(), date: s.date, note: s.note.trim(), text: s.text, results: s.results, updated: new Date().toISOString() };
+  busy($('#nextPub'), true); st.textContent = '保存しています…';
+  try { const sha = await update('next.json', () => JSON.stringify(nx, null, 2) + '\n', `次の大会を更新：${nx.event}`); published = nx; setPill('#nextPill', true, '公開中', '非公開'); watchBuild(sha, st); }
+  catch (e) { st.innerHTML = `<span class="ng">× ${esc(explain(e))}</span>`; }
+  busy($('#nextPub'), false);
+};
+let hideArmed = null;
+$('#nextHide').onclick = async () => {
+  const st = $('#nextSt'); if (needKey(st)) return;
+  if (!hideArmed) { $('#nextHide').textContent = 'もう一度押すと表示をやめます'; hideArmed = setTimeout(() => { hideArmed = null; $('#nextHide').textContent = '表示をやめる'; }, 3000); return; }
+  clearTimeout(hideArmed); hideArmed = null; $('#nextHide').textContent = '表示をやめる';
+  busy($('#nextHide'), true); st.textContent = '保存しています…';
+  try { const sha = await update('next.json', t => { let o = {}; try { o = JSON.parse(t || '{}'); } catch (e) {} o.active = false; return JSON.stringify(o, null, 2) + '\n'; }, '次の大会の表示をやめる');
+    if (published) published.active = false; setPill('#nextPill', false, '公開中', '非公開'); watchBuild(sha, st); }
+  catch (e) { st.innerHTML = `<span class="ng">× ${esc(explain(e))}</span>`; }
+  busy($('#nextHide'), false);
+};
+
+/* ===== 4. CSV ===== */
+const normEv = e => (e || '').normalize('NFKC').replace(/\s+/g, '');
+const normDate = d => { const m = (d || '').normalize('NFKC').trim().match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/); return m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : d; };
+const canon = n => { const t = findTeam(n); return t ? t.name : n; };
+const mkey = (d, e, a, b) => [normDate(d), normEv(e), ...[canon(a), canon(b)].sort()].join('|');
+function csvRows(text){
+  const L = (text || '').replace(/，/g, ',').split(/\r?\n/), out = [];
+  if (!L.length) return out;
+  const need = (L[0].replace(/、/g, ',').match(/,/g) || []).length;
+  for (const raw of L.slice(1)) {
+    let line = raw.normalize('NFKC'); let k = need - (line.match(/,/g) || []).length;
+    while (k > 0 && line.includes('、')) { line = line.replace('、', ','); k--; }
+    const f = line.split(',').map(x => x.trim()); if (f.length >= 4 && f[0]) out.push(f);
+  }
+  return out;
+}
+function knownNames(){
+  const s = new Set(); D.teams.forEach(t => { s.add(t.name); t.aliases.forEach(a => s.add(a)); });
+  if (teamsCsv) teamsCsv.split(/\r?\n/).slice(1).forEach(l => { const n = l.normalize('NFKC').split(/[,、]/)[0].trim(); if (n) s.add(n); });
+  return s;
+}
+let pending = { lines: [], newSchools: [] };
+function renderCsv(){
+  if (!BK || !D) return;
+  const s = BK.getState(), { list, open } = BK.playedMatches();
+  const ev = s.event.trim().replace(/,/g, '、'), dt = s.date, note = s.note.trim().replace(/,/g, '、');
+  const have = {};
+  if (matchesCsv !== null) for (const f of csvRows(matchesCsv)) { const k = mkey(f[0], f[1], f[2], f[3]); have[k] = (have[k] || 0) + 1; }
+  else for (const m of D.matches) { const k = mkey(m.date, m.event, m.a, m.b); have[k] = (have[k] || 0) + 1; }
+  const used = {}, lines = [], dups = [];
+  for (const m of list) {
+    const k = mkey(dt, ev, m.w, m.l);
+    if (dt && ev && (have[k] || 0) > (used[k] || 0)) { used[k] = (used[k] || 0) + 1; dups.push(`${m.round}：${m.w} 3-${m.lose} ${m.l}`); continue; }
+    lines.push([dt, ev, m.w, m.l, 3, m.lose, [note, m.round === '決勝' || m.round === '準決勝' ? m.round : ''].filter(Boolean).join('・')].join(','));
+  }
+  const known = knownNames();
+  const inLines = new Set(); list.forEach(m => { inLines.add(m.w); inLines.add(m.l); });
+  const newSchools = [...inLines].filter(n => !known.has(n));
+  pending = { lines, newSchools };
+  const miss = [!ev && '大会名', !dt && '日付'].filter(Boolean);
+  $('#csvInfo').innerHTML = `<div class="goal">追加する試合：<b>${lines.length}</b> 試合</div>` +
+    `<div class="meta">${dups.length ? `${dups.length}試合はすでに登録済みのため除きます。` : ''}${open ? `結果が未入力の試合が ${open} 試合あります（入力した試合だけ保存できます）。` : ''}</div>` +
+    (miss.length ? `<div class="ng" style="margin-top:4px">上の表で${miss.join('と')}を入れてください。</div>` : '');
+  const prevChecked = new Set([...document.querySelectorAll('#newSch input:checked')].map(i => i.value));
+  $('#newSch').innerHTML = newSchools.length ? `<div class="warn" style="margin-top:8px">次の学校は登録されていません。打ち間違いなら上の表で直してください。新しい学校なら、チェックを入れると teams.csv にも追加します。
+    ${newSchools.map(n => `<label><input type="checkbox" value="${esc(n)}" ${prevChecked.has(n) ? 'checked' : ''}> ${esc(n)} を新しい学校として登録する</label>`).join('')}</div>` : '';
+  $('#csvLines').value = lines.join('\n');
+  $('#csvDup').innerHTML = dups.length ? `<details><summary>登録済みとして除く試合（${dups.length}）</summary><ul style="margin:4px 0 0;padding-left:1.2em">${dups.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : '';
+}
+$('#csvSave').onclick = async () => {
+  const st = $('#csvSt'); if (needKey(st)) return;
+  const s = BK.getState();
+  if (!s.event.trim() || !s.date) { st.innerHTML = '<span class="ng">大会名と日付を入れてください。</span>'; return; }
+  busy($('#csvSave'), true); st.textContent = '最新の内容を確かめています…';
+  try {
+    await refreshFiles();                         // 直前の内容で重複・学校名を確かめ直す
+    const { lines, newSchools } = pending;
+    const checked = new Set([...document.querySelectorAll('#newSch input:checked')].map(i => i.value));
+    const unresolved = newSchools.filter(n => !checked.has(n));
+    if (!lines.length) { st.innerHTML = '追加する試合がありません。'; busy($('#csvSave'), false); return; }
+    if (unresolved.length) { st.innerHTML = `<span class="ng">未登録の学校があります：${unresolved.map(esc).join('、')}。上の表で直すか、新しい学校として登録にチェックを入れてください。</span>`; busy($('#csvSave'), false); return; }
+    if (newSchools.length) {
+      st.textContent = 'teams.csv に学校を追加しています…';
+      await update('teams.csv', t => { const have = new Set(t.split(/\r?\n/).slice(1).map(l => l.normalize('NFKC').split(/[,、]/)[0].trim()));
+        const add = newSchools.filter(n => !have.has(n)); if (!add.length) return null;
+        return (t && !t.endsWith('\n') ? t + '\n' : t || '学校名,備考\n') + add.map(n => n + ',\n').join(''); }, `学校を追加：${newSchools.join('、')}`);
+    }
+    st.textContent = 'matches.csv に保存しています…';
+    const sha = await update('matches.csv', t => (t && !t.endsWith('\n') ? t + '\n' : t || '日付,大会名,チームA,チームB,得点A,得点B,備考\n') + lines.join('\n') + '\n',
+      `試合結果を追加：${s.event.trim()}（${lines.length}試合）`);
+    st.innerHTML = `<span class="ok">✓ ${lines.length}試合を保存しました。</span>`;
+    await refreshFiles();
+    watchBuild(sha, st);
+  } catch (e) { st.innerHTML = `<span class="ng">× ${esc(explain(e))}</span>`; }
+  busy($('#csvSave'), false);
+};
+
+
+/* ===== 共通：CSV の行 ===== */
+const HEAD_M = '日付,大会名,チームA,チームB,得点A,得点B,備考';
+const cleanField = v => String(v == null ? '' : v).trim().replace(/,/g, '、');
+/** CSV を行ごとに読む（i は元の行番号、raw は元の文字） */
+function csvLines(text){
+  const L = (text || '').split(/\r?\n/), out = [];
+  if (!L.length) return out;
+  const need = (L[0].replace(/[、，]/g, ',').match(/,/g) || []).length;
+  L.forEach((raw, i) => {
+    if (i === 0 || !raw.trim()) return;
+    let line = raw.replace(/[，﹐]/g, ','); let k = need - (line.match(/,/g) || []).length;
+    while (k > 0 && line.includes('、')) { line = line.replace('、', ','); k--; }
+    const o = line.split(',').map(x => x.trim());   // 元のままの文字（書き戻し用）
+    out.push({ i, raw, o, f: o.map(x => x.normalize('NFKC')) });
+  });
+  return out;
+}
+/** 元の行を探して置き換える／消す（ops: [{raw, i, newLine|null}]）。見つからなければ止める */
+function applyOps(text, ops){
+  const L = (text || '').split(/\r?\n/), used = new Set();
+  for (const op of ops) {
+    let at = (L[op.i] === op.raw && !used.has(op.i)) ? op.i : -1;
+    if (at < 0) at = L.findIndex((x, j) => x === op.raw && !used.has(j));
+    if (at < 0) throw Object.assign(new Error('changed'), { status: 409 });
+    used.add(at); L[at] = op.newLine === null ? null : op.newLine;
+  }
+  const out = L.filter(x => x !== null);
+  while (out.length > 1 && out[out.length - 1] === '') out.pop();
+  return out.join('\n') + '\n';
+}
+
+/* ===== 5. 登録済みの試合 ===== */
+const mOps = new Map();   // 行番号 → {raw, i, newLine|null}
+let mEditing = null;
+function renderMatchesAdmin(){
+  const body = $('#mBody'); if (!body) return;
+  if (matchesCsv === null) { body.innerHTML = noKeyRow(5); return; }
+  const q = $('#mSearch').value.normalize('NFKC').trim();
+  const rows = csvLines(matchesCsv).filter(r => !q || r.f.slice(0, 4).concat(r.f[6] || '').some(x => (x || '').includes(q))).reverse().slice(0, 50);
+  body.innerHTML = rows.map(r => {
+    const op = mOps.get(r.i), f = op && op.newLine ? csvLines(HEAD_M + '\n' + op.newLine)[0].o : r.o;
+    if (mEditing === r.i) return `<tr data-i="${r.i}"><td colspan="5">
+      <div class="row" style="margin:0">
+        <input type="text" class="e" value="${esc(f[0])}" style="width:8.5em" placeholder="日付">
+        <input type="text" class="e" value="${esc(f[1])}" style="flex:2 1 160px;width:auto" placeholder="大会名">
+      </div><div class="row">
+        <input type="text" class="e" value="${esc(f[2])}" style="flex:1 1 100px;width:auto" placeholder="チームA">
+        <input type="text" class="e" value="${esc(f[4])}" style="width:3em" inputmode="numeric">
+        <span>-</span>
+        <input type="text" class="e" value="${esc(f[5])}" style="width:3em" inputmode="numeric">
+        <input type="text" class="e" value="${esc(f[3])}" style="flex:1 1 100px;width:auto" placeholder="チームB">
+        <input type="text" class="e" value="${esc(f[6] || '')}" style="flex:1 1 100px;width:auto" placeholder="備考">
+      </div><div class="row"><button class="btn pri" data-act="ok">この内容にする</button><button class="btn" data-act="cancel">やめる</button><span class="meta e-msg"></span></div></td></tr>`;
+    const del = op && op.newLine === null, mod = op && op.newLine;
+    return `<tr data-i="${r.i}" style="${del ? 'text-decoration:line-through;opacity:.5' : ''}${mod ? ';background:var(--hl)' : ''}">
+      <td>${esc(f[0])}</td><td>${esc(f[1])}</td><td>${esc(f[2])} <b>${esc(f[4])}-${esc(f[5])}</b> ${esc(f[3])}</td><td class="meta">${esc(f[6] || '')}</td>
+      <td style="white-space:nowrap">${del ? '<button class="btn" data-act="restore">戻す</button>' : '<button class="btn" data-act="edit">直す</button> <button class="btn" data-act="del">消す</button>'}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" class="meta">見つかりません。</td></tr>';
+  body.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => {
+    const tr = b.closest('tr'), i = +tr.dataset.i, r = csvLines(matchesCsv).find(x => x.i === i), act = b.dataset.act;
+    if (act === 'edit') { mEditing = i; }
+    else if (act === 'cancel') { mEditing = null; }
+    else if (act === 'del') { mOps.set(i, { raw: r.raw, i, newLine: null }); }
+    else if (act === 'restore') { mOps.delete(i); }
+    else if (act === 'ok') {
+      const v = [...tr.querySelectorAll('input.e')].map(x => x.value.trim()), N = x => x.normalize('NFKC');
+      let [date, ev, a, sa, sb, bb, note] = v; [date, a, sa, sb, bb] = [date, a, sa, sb, bb].map(N);
+      const msg = tr.querySelector('.e-msg'), known = knownNames();
+      if (!/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$/.test(date)) { msg.textContent = '日付は 2026-11-03 の形で入れてください。'; return; }
+      if (!/^\d+$/.test(sa) || !/^\d+$/.test(sb)) { msg.textContent = '得点は数字で入れてください。'; return; }
+      const bad = [a, bb].filter(n => !known.has(n));
+      if (bad.length) { msg.textContent = `「${bad.join('」「')}」は登録されていません。先に「6. 学校の一覧」で追加してください。`; return; }
+      if (a === bb) { msg.textContent = '同じ学校同士になっています。'; return; }
+      const nl = [normDate(date), ev, a, bb, sa, sb, note].map(cleanField).join(',');
+      if (nl === r.raw) mOps.delete(i); else mOps.set(i, { raw: r.raw, i, newLine: nl });
+      mEditing = null;
+    }
+    renderMatchesAdmin();
+  });
+  const nd = [...mOps.values()].filter(o => o.newLine === null).length, ne = mOps.size - nd;
+  $('#mPend').innerHTML = mOps.size ? `保存前の変更：直す ${ne} 件・消す ${nd} 件` : '';
+  $('#mSave').disabled = !mOps.size; $('#mUndo').disabled = !mOps.size;
+}
+$('#mSearch').addEventListener('input', () => renderMatchesAdmin());
+$('#mUndo').onclick = () => { mOps.clear(); mEditing = null; renderMatchesAdmin(); };
+$('#mSave').onclick = async () => {
+  const st = $('#mSt'); if (needKey(st) || !mOps.size) return;
+  const ops = [...mOps.values()], nd = ops.filter(o => o.newLine === null).length;
+  busy($('#mSave'), true); st.textContent = '保存しています…';
+  try {
+    const sha = await update('matches.csv', t => applyOps(t, ops), `試合結果を修正（直す ${ops.length - nd} 件・消す ${nd} 件）`);
+    mOps.clear(); await refreshFiles(); watchBuild(sha, st);
+  } catch (e) {
+    st.innerHTML = `<span class="ng">× ${e.message === 'changed' ? 'ほかの保存で内容が変わっていました。変更を取り消して、もう一度やり直してください。' : esc(explain(e))}</span>`;
+  }
+  busy($('#mSave'), false);
+};
+
+/* ===== 6. 学校 ===== */
+let tAct = null;   // {name, kind:'rename'|'alias'|'del', armed}
+function teamRows(){ return (teamsCsv || '').split(/\r?\n/).slice(1).map((l, k) => ({ k: k + 1, raw: l, name: l.normalize('NFKC').split(/[,、]/)[0].trim() })).filter(x => x.name); }
+function aliasRows(){ return csvLines(aliasesCsv || '旧名称,現名称\n').map(r => ({ i: r.i, raw: r.raw, old: r.f[0], now: r.f[1] })); }
+function renderTeamsAdmin(){
+  const body = $('#tBody'); if (!body) return;
+  if (teamsCsv === null) { body.innerHTML = noKeyRow(4); return; }
+  const cnt = {}; for (const r of csvLines(matchesCsv || '')) for (const n of [r.f[2], r.f[3]]) cnt[n] = (cnt[n] || 0) + 1;
+  const al = aliasRows(), q = $('#tSearch').value.normalize('NFKC').trim();
+  const list = teamRows().filter(t => !q || t.name.includes(q) || al.some(a => a.now === t.name && a.old.includes(q)))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  body.innerHTML = list.map(t => {
+    const olds = al.filter(a => a.now === t.name).map(a => a.old), n = (cnt[t.name] || 0) + olds.reduce((s, o) => s + (cnt[o] || 0), 0);
+    const open = tAct && tAct.name === t.name && (tAct.kind === 'rename' || tAct.kind === 'alias');
+    return `<tr data-n="${esc(t.name)}"><td>${esc(t.name)}</td><td class="num">${n}</td><td class="meta">${olds.map(esc).join('、')}</td>
+      <td style="white-space:nowrap"><button class="btn" data-act="rename">名前を直す</button> <button class="btn" data-act="alias">旧校名を登録</button>
+      ${n ? '' : ` <button class="btn" data-act="del">${tAct && tAct.name === t.name && tAct.kind === 'del' ? 'もう一度押すと消えます' : '消す'}</button>`}</td></tr>
+      ${open ? `<tr data-n="${esc(t.name)}"><td colspan="4"><div class="row" style="margin:0">
+        <input type="text" class="tIn" autocomplete="off" placeholder="${tAct.kind === 'rename' ? '正しい学校名' : '旧校名・別の書き方（例：堺）'}" style="flex:1 1 180px;width:auto">
+        <button class="btn pri" data-act="go">${tAct.kind === 'rename' ? 'この名前に直して保存' : '登録して保存'}</button><button class="btn" data-act="cancel">やめる</button></div></td></tr>` : ''}`;
+  }).join('') || '<tr><td colspan="4" class="meta">見つかりません。</td></tr>';
+  body.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => teamAction(b.closest('tr').dataset.n, b.dataset.act, b.closest('tr')));
+  const inp = body.querySelector('.tIn'); if (inp) inp.focus();
+}
+$('#tSearch').addEventListener('input', () => renderTeamsAdmin());
+async function teamAction(name, act, tr){
+  const st = $('#tSt');
+  if (act === 'rename' || act === 'alias') { tAct = { name, kind: act }; renderTeamsAdmin(); return; }
+  if (act === 'cancel') { tAct = null; renderTeamsAdmin(); return; }
+  if (needKey(st)) return;
+  const known = new Set(teamRows().map(t => t.name));
+  try {
+    if (act === 'del') {
+      if (!(tAct && tAct.name === name && tAct.kind === 'del')) { tAct = { name, kind: 'del' }; renderTeamsAdmin(); setTimeout(() => { if (tAct && tAct.kind === 'del') { tAct = null; renderTeamsAdmin(); } }, 3000); return; }
+      tAct = null; st.textContent = '保存しています…';
+      const sha = await update('teams.csv', t => { const L = t.split(/\r?\n/); const k = L.findIndex((l, j) => j > 0 && l.normalize('NFKC').split(/[,、]/)[0].trim() === name); if (k < 0) return null; L.splice(k, 1); return L.join('\n').replace(/\n*$/, '\n'); }, `学校を削除：${name}`);
+      await refreshFiles(); if (sha) watchBuild(sha, st); return;
+    }
+    if (act === 'go') {
+      const v = tr.querySelector('.tIn').value.normalize('NFKC').replace(/\s+/g, '').replace(/,/g, '');
+      if (!v || v === name) { st.innerHTML = '<span class="ng">名前を入れてください。</span>'; return; }
+      if (tAct.kind === 'alias') {
+        if (aliasRows().some(a => a.old === v)) { st.innerHTML = `<span class="ng">「${esc(v)}」はすでに登録されています。</span>`; return; }
+        st.textContent = '保存しています…';
+        const sha = await update('aliases.csv', t => (t && t.trim() ? t.replace(/\n*$/, '\n') : '旧名称,現名称\n') + `${v},${name}\n`, `旧校名を登録：${v} → ${name}`);
+        tAct = null; await refreshFiles(); watchBuild(sha, st); return;
+      }
+      // 名前を直す：teams.csv・matches.csv・aliases.csv をまとめて
+      const merge = known.has(v);
+      st.textContent = `「${name}」を「${v}」に直しています…（1/3）`;
+      await update('teams.csv', t => { const L = t.split(/\r?\n/); const k = L.findIndex((l, j) => j > 0 && l.normalize('NFKC').split(/[,、]/)[0].trim() === name);
+        if (k < 0) return null; if (merge) L.splice(k, 1); else L[k] = L[k].replace(/^[^,、]*/, v); return L.join('\n').replace(/\n*$/, '\n'); }, `学校名を修正：${name} → ${v}`);
+      st.textContent = `「${name}」を「${v}」に直しています…（2/3）`;
+      await update('aliases.csv', t => { if (!t || !t.includes(name)) return null; const ls = csvLines(t);
+        const ops = ls.filter(r => r.f[1] === name).map(r => ({ raw: r.raw, i: r.i, newLine: `${r.o[0]},${v}` })); return ops.length ? applyOps(t, ops) : null; }, `学校名を修正：${name} → ${v}`);
+      st.textContent = `「${name}」を「${v}」に直しています…（3/3）`;
+      const sha = await update('matches.csv', t => { const ls = csvLines(t).filter(r => r.f[2] === name || r.f[3] === name);
+        if (!ls.length) return null;
+        return applyOps(t, ls.map(r => { const f = r.o.slice(); if (r.f[2] === name) f[2] = v; if (r.f[3] === name) f[3] = v; return { raw: r.raw, i: r.i, newLine: f.slice(0, 7).map(cleanField).join(',') }; })); }, `学校名を修正：${name} → ${v}`);
+      tAct = null; await refreshFiles();
+      if (sha) watchBuild(sha, st); else st.innerHTML = `<span class="ok">✓ 直しました。</span>`;
+    }
+  } catch (e) { st.innerHTML = `<span class="ng">× ${esc(explain(e))}</span>`; }
+}
+$('#tAdd').onclick = async () => {
+  const st = $('#tSt'); if (needKey(st)) return;
+  const v = $('#tNew').value.normalize('NFKC').replace(/\s+/g, '').replace(/,/g, '');
+  if (!v) return;
+  if (teamRows().some(t => t.name === v)) { st.innerHTML = `<span class="ng">「${esc(v)}」はすでにあります。</span>`; return; }
+  busy($('#tAdd'), true); st.textContent = '保存しています…';
+  try { const sha = await update('teams.csv', t => (t && t.trim() ? t.replace(/\n*$/, '\n') : '学校名,備考\n') + `${v},\n`, `学校を追加：${v}`);
+    $('#tNew').value = ''; await refreshFiles(); watchBuild(sha, st); }
+  catch (e) { st.innerHTML = `<span class="ng">× ${esc(explain(e))}</span>`; }
+  busy($('#tAdd'), false);
+};
+
+/* ===== 7. 設定 ===== */
+function renderConfig(){
+  const c = Object.assign({ site_title: D ? D.title : '', highlight_team: '', rank_rd_limit: 150, active_years: 3, season_start_month: 4, season_rd_increase: 50 }, configJson || {});
+  $('#cfTitle').value = c.site_title; $('#cfRd').value = c.rank_rd_limit; $('#cfYears').value = c.active_years;
+  $('#cfMonth').value = c.season_start_month; $('#cfInc').value = c.season_rd_increase;
+  const names = teamRows().map(t => t.name).sort((a, b) => a.localeCompare(b, 'ja'));
+  $('#cfHl').innerHTML = '<option value="">（なし）</option>' + names.map(n => `<option ${n === c.highlight_team ? 'selected' : ''}>${esc(n)}</option>`).join('');
+}
+$('#cfSave').onclick = async () => {
+  const st = $('#cfSt'); if (needKey(st)) return;
+  const num = (id, lo, hi) => { const v = Number($(id).value.normalize('NFKC').trim()); return Number.isFinite(v) && v >= lo && v <= hi ? v : null; };
+  const rd = num('#cfRd', 30, 350), yrs = num('#cfYears', 1, 50), mon = num('#cfMonth', 1, 12), inc = num('#cfInc', 0, 200);
+  if ([rd, yrs, mon, inc].includes(null) || !Number.isInteger(mon)) { st.innerHTML = '<span class="ng">数字の範囲を確かめてください（基準 30〜350、期間 1〜50、月 1〜12、広げる量 0〜200）。</span>'; return; }
+  busy($('#cfSave'), true); st.textContent = '保存しています…';
+  try {
+    const sha = await update('config.json', t => { let c = {}; try { c = JSON.parse(t || '{}'); } catch (e) {}
+      Object.assign(c, { site_title: $('#cfTitle').value.trim() || c.site_title, highlight_team: $('#cfHl').value, rank_rd_limit: rd, active_years: yrs, season_start_month: mon, season_rd_increase: inc });
+      return JSON.stringify(c, null, 2) + '\n'; }, '設定を変更');
+    await refreshFiles(); watchBuild(sha, st);
+  } catch (e) { st.innerHTML = `<span class="ng">× ${esc(explain(e))}</span>`; }
+  busy($('#cfSave'), false);
+};
+
+/* ===== 起動 ===== */
+Promise.all([
+  fetch('data/ratings.json', {cache: 'no-cache'}).then(r => r.json()),
+  fetch('data/next.json', {cache: 'no-cache'}).then(r => r.ok ? r.json() : null).catch(() => null),
+  fetch('data/notice.json', {cache: 'no-cache'}).then(r => r.ok ? r.json() : null).catch(() => null),
+]).then(([d, nx, nt]) => {
+  D = d; published = nx;
+  setPill('#nextPill', nx && nx.active, '公開中', '非公開');
+  showNotice(nt || {});
+  const draft = lsGet(DRAFT);
+  mountBracket(draft || (nx && nx.text ? { text: nx.text, event: nx.event, date: nx.date, note: nx.note, results: nx.results || {} } : {}));
+  renderMatchesAdmin(); renderTeamsAdmin(); renderConfig();
+  checkKey();
+}).catch(e => { document.querySelector('header .meta').textContent = 'データを読み込めませんでした：' + e; });
+</script>
+</body>
+</html>
