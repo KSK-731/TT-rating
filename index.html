@@ -84,7 +84,7 @@ h2{font-size:1.1rem;margin:20px 0 8px}
 #bkSwitch .btn{font:inherit;padding:6px 14px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);cursor:pointer}
 #bkSwitch .btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
 .chg{font-size:.8rem;font-variant-numeric:tabular-nums;width:4.2em;line-height:1.25}
-.rchg{display:block;font-size:.72rem;font-weight:400;opacity:.9}
+.rdiff{font-size:.78rem;font-weight:400;margin-left:3px;white-space:nowrap}
 .up{color:var(--win)} .down{color:var(--lose)} .new{color:var(--sub);font-size:.72rem}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:4px 0 0;font-size:.88rem}
 .legend span{display:inline-flex;align-items:center;gap:6px}
@@ -95,6 +95,16 @@ h2{font-size:1.1rem;margin:20px 0 8px}
 .cmp .slot i{flex:none;width:12px;height:12px;border-radius:50%}
 .evh{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
 .evh h2{margin-top:8px}
+.rec h3{font-size:.95rem;margin:10px 0 4px}
+.rec td{padding-top:5px;padding-bottom:5px}
+.mybox{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:10px 12px;margin:0 0 12px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;background:var(--hl)}
+.mybox .nm{font-weight:700;font-size:1.05rem}
+.mybox .big2{font-size:1.25rem;font-weight:700;font-variant-numeric:tabular-nums}
+.mybox button,.mybox a.lnk{font:inherit;font-size:.85rem;padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);cursor:pointer;text-decoration:none}
+.mybox .sp{flex:1}
+.mybox.empty{background:transparent;border-left-color:var(--line)}
+tr.my td{font-weight:700}
+tr.my td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
 .bk textarea{width:100%;min-height:220px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
 .bk input[type=date],.bk input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
 .bk .row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;align-items:center}
@@ -141,6 +151,7 @@ a{color:var(--accent)}
 
   <section id="tab-rank">
     <div class="card">
+      <div id="myBox"></div>
       <div class="tools">
         <input type="search" id="q" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="学校名で絞り込み">
         <select id="rankWhen"></select>
@@ -175,6 +186,7 @@ a{color:var(--accent)}
   </section>
 
   <section id="tab-events" class="hidden">
+    <div class="card rec" id="records"></div>
     <div class="card">
       <div class="tbl"><table>
         <thead><tr><th>日付</th><th>大会</th><th class="num">試合数</th><th class="num">出場校</th><th>番狂わせ</th></tr></thead>
@@ -268,26 +280,24 @@ const asofLabel = d => { const [y, m] = d.split('-').map(Number); return `${y}�
 function rankSource(){
   const w = $('#rankWhen').value;
   if (w === 'now') return { teams: D.teams, prev: D.prev ? D.prev.ranks : null, prevR: D.prev ? D.prev.ratings || null : null, season: false,
-    note: D.prev ? `変動は「${D.prev.event}」の前と比べた順位（▲▼）とレーティング（＋−）です。` : '' };
+    note: D.prev ? `変動（▲▼）とレーティングの横の（＋−）は、「${D.prev.event}」の前と比べた順位とレーティングです。` : '' };
   const i = +w, sn = D.seasons[i], older = D.seasons[i + 1];
   const prev = older ? Object.fromEntries(older.teams.filter(t => t.ranked).map((t, k) => [t.name, k + 1])) : null;
   const prevR = older ? Object.fromEntries(older.teams.map(t => [t.name, t.rating])) : null;
   return { teams: sn.teams, prev, prevR, season: true,
-    note: `${asofLabel(sn.asof)}のランキングです。勝-敗はその年度の成績、変動は前年度末と比べた順位とレーティングです。` };
+    note: `${asofLabel(sn.asof)}のランキングです。勝-敗はその年度の成績、変動（▲▼）と（＋−）は前年度末と比べた順位とレーティングです。` };
 }
-function chgCell(name, rank, prev, prevR, rating){
+function rdiff(d){
+  return d ? `<span class="rdiff ${d > 0 ? 'up' : 'down'}">(${d > 0 ? '+' : ''}${d})</span>` : '';
+}
+function chgCell(name, rank, prev){
   let r = '';
   if (prev && rank) {
     const p = prev[name];
     if (!p) r = '<span class="new">NEW</span>';
     else { const d = p - rank; r = d > 0 ? `<span class="up">▲${d}</span>` : d < 0 ? `<span class="down">▼${-d}</span>` : '<span class="new">–</span>'; }
   }
-  let rr = '';
-  if (prevR && prevR[name] != null) {
-    const d = rating - prevR[name];
-    rr = d ? `<span class="rchg ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}</span>` : '<span class="rchg new">±0</span>';
-  }
-  return `<td class="num chg">${r}${rr}</td>`;
+  return `<td class="num chg">${r}</td>`;
 }
 function renderRank(){
   const q = $('#q').value.trim(), all = $('#showAll').checked, src = rankSource();
@@ -306,11 +316,11 @@ function renderRank(){
       : `最近 ${D.active_years} 年出場していない学校`}</td></tr>`;
     prev = g;
     if (q && !t.name.includes(q) && !(base.aliases || []).some(a => a.includes(q))) continue;
-    const cls = ['click', t.name === D.highlight ? 'hl' : '', t.ranked ? '' : 'inactive'].join(' ');
+    const cls = ['click', t.name === D.highlight ? 'hl' : '', t.name === myName() ? 'my' : '', t.ranked ? '' : 'inactive'].join(' ');
     const wl = src.season ? `${t.season_wl[0]}-${t.season_wl[1]}` : `${t.wins}-${t.losses}${t.draws ? '-' + t.draws : ''}`;
     html += `<tr class="${cls}" onclick="location.hash='team='+encodeURIComponent(${esc(JSON.stringify(t.name))})">
-      <td class="num rank">${t.ranked ? k : '–'}</td>${chgCell(t.name, t.ranked ? k : 0, src.prev, src.prevR, t.rating)}<td>${esc(t.name)}</td>
-      <td class="num"><b>${t.rating}</b></td><td class="num rd">±${t.rd}</td>
+      <td class="num rank">${t.ranked ? k : '–'}</td>${chgCell(t.name, t.ranked ? k : 0, src.prev)}<td>${t.name === myName() ? '★ ' : ''}${esc(t.name)}</td>
+      <td class="num" style="white-space:nowrap"><b>${t.rating}</b>${src.prevR && src.prevR[t.name] != null ? rdiff(t.rating - src.prevR[t.name]) : ''}</td><td class="num rd">±${t.rd}</td>
       <td class="num">${wl}</td>${src.season ? '' : `<td>${t.last}</td>`}</tr>`;
   }
   $('#rankBody').innerHTML = html;
@@ -413,6 +423,77 @@ function eventList(){
   return [...map.values()].sort((a, b) => b.date.localeCompare(a.date) || b.event.localeCompare(a.event));
 }
 const winnerP = m => m.sa > m.sb ? m.pa : m.sb > m.sa ? 1 - m.pa : 0.5;
+
+/* ===== 自分の学校（その人の端末にだけ保存） ===== */
+const MY_KEY = 'tt-my';
+function myName(){ const n = lsGet(MY_KEY); return n && D && D.teams.some(t => t.name === n) ? n : ''; }
+function renderMyBox(editing){
+  const box = $('#myBox'), n = myName();
+  if (editing || !n) {
+    box.className = 'mybox' + (n ? '' : ' empty');
+    box.innerHTML = `<span>★ 自分の学校</span><input type="search" id="myIn" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="学校名を入れると、ここにいつも表示されます" style="flex:1 1 220px;width:auto">${n ? '<button id="myCancel">やめる</button>' : ''}`;
+    const inp = $('#myIn'); attachSuggest(inp, D.teams.flatMap(t => [[t.name, t.name], ...t.aliases.map(a => [a, t.name])]));
+    inp.addEventListener('input', () => setTimeout(() => { const t = findTeam(inp.value); if (t && document.activeElement !== inp) { lsSet(MY_KEY, t.name); renderMyBox(); renderRank(); } }, 0));
+    inp.addEventListener('change', () => { const t = findTeam(inp.value); if (t) { lsSet(MY_KEY, t.name); renderMyBox(); renderRank(); } });
+    if (n) $('#myCancel').onclick = () => renderMyBox();
+    return;
+  }
+  const t = D.teams.find(x => x.name === n), ranked = D.teams.filter(x => x.ranked).sort((a, b) => b.rating - a.rating);
+  const k = ranked.findIndex(x => x.name === n) + 1, pr = D.prev && D.prev.ranks ? D.prev.ranks[n] : null, prR = D.prev && D.prev.ratings ? D.prev.ratings[n] : null;
+  const mv = k && pr ? (pr - k > 0 ? `<span class="up">▲${pr - k}</span>` : pr - k < 0 ? `<span class="down">▼${k - pr}</span>` : '') : '';
+  box.className = 'mybox';
+  box.innerHTML = `<span class="nm">★ ${esc(n)}</span>
+    <span>${k ? `<span class="big2">${k}位</span> ${mv}` : '<span class="meta">暫定</span>'}</span>
+    <span><span class="big2">${t.rating}</span>${prR != null ? rdiff(t.rating - prR) : ''} <span class="rd">±${t.rd}</span></span>
+    <span class="meta">${t.wins}勝 ${t.losses}敗</span><span class="sp"></span>
+    <a class="lnk" href="#team=${encodeURIComponent(n)}">学校のページ</a><button id="myEdit">変える</button>`;
+  $('#myEdit').onclick = () => renderMyBox(true);
+}
+
+/* ===== 歴代の記録 ===== */
+function renderRecords(){
+  const link = n => `<a href="#team=${encodeURIComponent(n)}">${esc(n)}</a>`;
+  const tbl = rows => rows.length ? `<div class="tbl"><table><tbody>${rows.map((r, i) => `<tr><td class="num rd" style="width:1.6em">${i + 1}</td>${r}</tr>`).join('')}</tbody></table></div>` : '<p class="meta">まだありません。</p>';
+  // 最高レーティング
+  const peaks = D.teams.filter(t => t.peak).sort((a, b) => b.peak[0] - a.peak[0]).slice(0, 5)
+    .map(t => `<td>${link(t.name)}</td><td class="num"><b>${t.peak[0]}</b></td><td class="meta">${t.peak[1]}</td>`);
+  // 連勝
+  const cur = {}, best = [];
+  const close = n => { const c = cur[n]; if (c && c.n >= 2) best.push({ name: n, ...c }); };
+  for (const m of D.matches) {
+    if (m.sa === m.sb) continue;
+    const w = m.sa > m.sb ? m.a : m.b, l = m.sa > m.sb ? m.b : m.a;
+    if (!cur[w]) cur[w] = { n: 0, from: m.date, to: m.date };
+    if (!cur[w].n) cur[w].from = m.date;
+    cur[w].n++; cur[w].to = m.date;
+    close(l); cur[l] = { n: 0 };
+  }
+  for (const n in cur) if (cur[n].n >= 2) best.push({ name: n, ...cur[n], live: true });
+  const streaks = best.sort((a, b) => b.n - a.n || b.to.localeCompare(a.to)).slice(0, 5)
+    .map(s => `<td>${link(s.name)}</td><td class="num"><b>${s.n}連勝</b></td><td class="meta">${s.from}〜${s.live ? '<b>継続中</b>' : s.to}</td>`);
+  // 番狂わせ
+  const ups = D.matches.filter(m => m.sa !== m.sb && Math.abs(m.pa - 0.5) > 0.005).sort((a, b) => winnerP(a) - winnerP(b)).slice(0, 5).map(m => {
+    const aw = m.sa > m.sb, w = aw ? m.a : m.b, l = aw ? m.b : m.a;
+    return `<td>${link(w)} <b>${Math.max(m.sa, m.sb)}-${Math.min(m.sa, m.sb)}</b> ${link(l)}<div class="meta">${m.date} ${esc(m.event)}</div></td><td class="num">${pct(winnerP(m))}</td>`; });
+  // 1大会での上昇
+  const jumps = [];
+  for (const t of D.teams) t.history.forEach((h, i) => { if (i > 0 && h[4] > 0) jumps.push({ name: t.name, date: h[0], event: h[1], c: h[4], r: h[2] }); });   // 初出場の大会は値が大きく動くので除く
+  const jump = jumps.sort((a, b) => b.c - a.c).slice(0, 5)
+    .map(j => `<td>${link(j.name)}<div class="meta">${j.date} ${esc(j.event)}</div></td><td class="num up" style="white-space:nowrap"><b>+${j.c}</b><div class="rd">→ ${j.r}</div></td>`);
+  // 通算勝利
+  const wins = D.teams.slice().sort((a, b) => b.wins - a.wins || a.losses - b.losses).slice(0, 5)
+    .map(t => `<td>${link(t.name)}</td><td class="num"><b>${t.wins}勝</b></td><td class="num meta">${t.losses}敗</td>`);
+  $('#records').innerHTML = `<h2 style="margin-top:0">歴代の記録</h2>
+    <p class="meta" style="margin-top:0">記録にある ${D.matches[0] ? D.matches[0].date : ''} 以降の団体戦が対象です。</p>
+    <div class="evh">
+      <div><h3>最高レーティング</h3>${tbl(peaks)}</div>
+      <div><h3>連勝記録</h3>${tbl(streaks)}</div>
+      <div><h3>1大会で大きく上げた学校</h3><p class="meta" style="margin:0">初出場の大会は除いています。</p>${tbl(jump)}</div>
+      <div><h3>通算の勝利数</h3>${tbl(wins)}</div>
+    </div>
+    <h3>大きな番狂わせ（勝つ確率がいちばん低かった勝利）</h3>${tbl(ups)}`;
+}
+
 function renderEvents(){
   $('#eventBody').innerHTML = eventList().map(e => {
     const schools = new Set(e.ms.flatMap(m => [m.a, m.b]));
@@ -569,6 +650,36 @@ function renderCalibration(){
   });
 }
 
+/** 学校の年度別成績（新しい年度から） */
+function seasonTable(t){
+  const rankOf = (list, name) => { const r = list.filter(x => x.ranked).sort((a, b) => b.rating - a.rating); const i = r.findIndex(x => x.name === name); return i < 0 ? 0 : i + 1; };
+  const ms = D.matches.filter(m => m.a === t.name || m.b === t.name);
+  const evs = s => new Set(ms.filter(m => seasonOf(m.date) === s).map(m => m.date + m.event)).size;
+  const snaps = (D.seasons || []).slice().sort((a, b) => a.season - b.season);
+  const rows = []; let prevR = null;
+  const push = (season, label, wl, rating, rd, rank, active) => {
+    if (wl[0] + wl[1] + (wl[2] || 0) === 0) { if (rating != null) prevR = rating; return; }
+    rows.push({ label, n: evs(season), wl, rating, rd, rank, active, d: prevR == null ? null : rating - prevR });
+    prevR = rating;
+  };
+  for (const sn of snaps) {
+    const x = sn.teams.find(y => y.name === t.name); if (!x) continue;
+    push(sn.season, `${sn.season}年度`, x.season_wl, x.rating, x.rd, rankOf(sn.teams, t.name), x.active);
+  }
+  const cur = ms.length ? seasonOf(ms[ms.length - 1].date) : null, last = snaps.length ? snaps[snaps.length - 1].season : -1;
+  if (cur != null && cur > last) {
+    const cm = ms.filter(m => seasonOf(m.date) === cur);
+    const w = cm.filter(m => (m.a === t.name ? m.sa > m.sb : m.sb > m.sa)).length, l = cm.filter(m => (m.a === t.name ? m.sa < m.sb : m.sb < m.sa)).length;
+    push(cur, `${cur}年度（途中）`, [w, l], t.rating, t.rd, rankOf(D.teams, t.name), t.active);
+  }
+  if (!rows.length) return '';
+  return `<h2>年度別の成績</h2><div class="tbl"><table><thead><tr><th>年度</th><th class="num">出場大会</th><th class="num">勝-敗</th><th class="num">年度末のレーティング</th><th class="num">順位</th></tr></thead><tbody>${
+    rows.slice().reverse().map(r => `<tr><td>${r.label}</td><td class="num">${r.n}</td><td class="num">${r.wl[0]}-${r.wl[1]}</td>
+      <td class="num" style="white-space:nowrap"><b>${r.rating}</b>${r.d == null ? '' : rdiff(r.d)} <span class="rd">±${r.rd}</span></td>
+      <td class="num">${r.rank ? r.rank + '位' : '<span class="meta">暫定</span>'}</td></tr>`).join('')}</tbody></table></div>
+    <p class="meta">（＋−）は前の年度末からの増減です。途中の年度は現在の値です。</p>`;
+}
+
 function renderTeam(name){
   const t = D.teams.find(x => x.name === name);
   if (!t) { $('#teamCard').innerHTML = '<p>学校が見つかりません。</p>'; return; }
@@ -579,13 +690,14 @@ function renderTeam(name){
     ${t.aliases.length ? `<div class="meta">旧名称：${t.aliases.map(esc).join('、')}</div>` : ''}
     ${t.note ? `<div class="meta">${esc(t.note)}</div>` : ''}
     <div class="kv">
-      <div><span>現在のレーティング</span><span class="big">${t.rating}</span> <span class="rd">±${t.rd}</span></div>
+      <div><span>現在のレーティング</span><span class="big">${t.rating}</span>${t.history.length > 1 ? rdiff(t.rating - t.history[t.history.length - 2][2]) : ''} <span class="rd">±${t.rd}</span></div>
       <div><span>順位</span>${activeRank ? activeRank + '位' : t.active ? '暫定（試合数が少ないため順位なし）' : '圏外（最近出場なし）'}</div>
       <div><span>通算</span>${t.wins}勝 ${t.losses}敗${t.draws ? ' ' + t.draws + '分' : ''}</div>
       <div><span>歴代最高</span>${!t.peak ? '–' : (t.history.length && t.peak[1] === t.history[t.history.length - 1][0] && t.peak[0] === t.rating) ? `${t.peak[0]}（現在）` : `${t.peak[0]}（${t.peak[1]}）`}</div>
       <div><span>初出場</span>${t.first}</div>
     </div>
     <div class="chart"><canvas id="cv"></canvas></div>
+    ${seasonTable(t)}
     <h2>試合一覧</h2>
     <div class="tbl"><table><thead><tr><th>日付</th><th>大会</th><th>結果</th><th class="num">スコア</th><th>相手</th><th class="num">勝率予想</th></tr></thead>
     <tbody>${ms.map(m => matchRow(m, name)).join('')}</tbody></table></div>`;
@@ -658,7 +770,7 @@ fetch('data/ratings.json', {cache: 'no-cache'}).then(r => r.json()).then(d => {
     inp.addEventListener('input', () => { if (!inp.value.trim() || findTeam(inp.value)) drawCompare(); }); });
   $('#rankWhen').innerHTML = '<option value="now">現在</option>' + (D.seasons || []).map((sn, i) => `<option value="${i}">${asofLabel(sn.asof)}</option>`).join('');
   $('#rankWhen').onchange = renderRank;
-  renderEvents();
+  renderEvents(); renderRecords(); renderMyBox();
   bkInit(schoolList, [...new Set(D.matches.map(m => m.event))]);
   $('#pa').oninput = renderPredict; $('#pb').oninput = renderPredict; renderPredict();
   $('#q').oninput = renderRank; $('#showAll').onchange = renderRank;
