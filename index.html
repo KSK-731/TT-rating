@@ -81,6 +81,7 @@ h2{font-size:1.1rem;margin:20px 0 8px}
 .hidden{display:none}
 .notice{background:var(--hl);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;margin:8px 0 4px;line-height:1.7}
 .notice .meta{margin-left:6px;font-size:.8rem}
+.notice a{overflow-wrap:anywhere}
 #bkSwitch .btn{font:inherit;padding:6px 14px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);cursor:pointer}
 #bkSwitch .btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
 .chg{font-size:.8rem;font-variant-numeric:tabular-nums;width:4.2em;line-height:1.25}
@@ -472,12 +473,18 @@ function renderRecords(){
   const streaks = best.sort((a, b) => b.n - a.n || b.to.localeCompare(a.to)).slice(0, 5)
     .map(s => `<td>${link(s.name)}</td><td class="num"><b>${s.n}連勝</b></td><td class="meta">${s.from}〜${s.live ? '<b>継続中</b>' : s.to}</td>`);
   // 番狂わせ
-  const ups = D.matches.filter(m => m.sa !== m.sb && Math.abs(m.pa - 0.5) > 0.005).sort((a, b) => winnerP(a) - winnerP(b)).slice(0, 5).map(m => {
+  const lim = D.rank_rd_limit, okRd = m => m.da == null || (m.da <= lim && m.db <= lim);
+  const ups = D.matches.filter(m => m.sa !== m.sb && Math.abs(m.pa - 0.5) > 0.005 && okRd(m)).sort((a, b) => winnerP(a) - winnerP(b)).slice(0, 5).map(m => {
     const aw = m.sa > m.sb, w = aw ? m.a : m.b, l = aw ? m.b : m.a;
     return `<td>${link(w)} <b>${Math.max(m.sa, m.sb)}-${Math.min(m.sa, m.sb)}</b> ${link(l)}<div class="meta">${m.date} ${esc(m.event)}</div></td><td class="num">${pct(winnerP(m))}</td>`; });
   // 1大会での上昇
   const jumps = [];
-  for (const t of D.teams) t.history.forEach((h, i) => { if (i > 0 && h[4] > 0) jumps.push({ name: t.name, date: h[0], event: h[1], c: h[4], r: h[2] }); });   // 初出場の大会は値が大きく動くので除く
+  const rdBefore = {};   // 大会の前の ±RD（学校・日付・大会名ごと）
+  for (const m of D.matches) if (m.da != null) { rdBefore[m.a + '|' + m.date + '|' + m.event] = m.da; rdBefore[m.b + '|' + m.date + '|' + m.event] = m.db; }
+  for (const t of D.teams) t.history.forEach((h, i) => {
+    const rd = rdBefore[t.name + '|' + h[0] + '|' + h[1]];
+    if (i > 0 && h[4] > 0 && (rd == null || rd <= lim)) jumps.push({ name: t.name, date: h[0], event: h[1], c: h[4], r: h[2] });
+  });
   const jump = jumps.sort((a, b) => b.c - a.c).slice(0, 5)
     .map(j => `<td>${link(j.name)}<div class="meta">${j.date} ${esc(j.event)}</div></td><td class="num up" style="white-space:nowrap"><b>+${j.c}</b><div class="rd">→ ${j.r}</div></td>`);
   // 通算勝利
@@ -488,10 +495,10 @@ function renderRecords(){
     <div class="evh">
       <div><h3>最高レーティング</h3>${tbl(peaks)}</div>
       <div><h3>連勝記録</h3>${tbl(streaks)}</div>
-      <div><h3>1大会で大きく上げた学校</h3><p class="meta" style="margin:0">初出場の大会は除いています。</p>${tbl(jump)}</div>
+      <div><h3>一度の大会で大きく上げた学校</h3><p class="meta" style="margin:0">大会の前の ±RD が ${lim} を超えていた学校（試合数が少なく値が定まっていない学校）は除いています。</p>${tbl(jump)}</div>
       <div><h3>通算の勝利数</h3>${tbl(wins)}</div>
     </div>
-    <h3>大きな番狂わせ（勝つ確率がいちばん低かった勝利）</h3>${tbl(ups)}`;
+    <h3>大きな番狂わせ（勝つ確率がいちばん低かった勝利）</h3><p class="meta" style="margin:0">試合の前に、どちらかの学校の ±RD が ${lim} を超えていた試合は除いています。</p>${tbl(ups)}`;
 }
 
 function renderEvents(){
@@ -604,11 +611,13 @@ function setBkMode(m){
 }
 
 /* ===== お知らせ ===== */
+/** 文中の https://… をリンクにする（文字はすでにエスケープ済み） */
+const linkify = h => h.replace(/https?:\/\/[^\s<>"'）」』、。]+/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
 function loadNotice(){
   fetch('data/notice.json', {cache: 'no-cache'}).then(r => r.ok ? r.json() : null).catch(() => null).then(n => {
     if (!n || !n.active || !String(n.text || '').trim()) return;
     const box = $('#notice');
-    box.innerHTML = `<b>お知らせ</b>${n.updated ? `<span class="meta">（${esc(n.updated)}）</span>` : ''}<div>${esc(n.text).replace(/\n/g, '<br>')}</div>`;
+    box.innerHTML = `<b>お知らせ</b>${n.updated ? `<span class="meta">（${esc(n.updated)}）</span>` : ''}<div>${linkify(esc(n.text)).replace(/\n/g, '<br>')}</div>`;
     box.hidden = false;
   });
 }

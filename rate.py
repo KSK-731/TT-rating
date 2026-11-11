@@ -332,6 +332,7 @@ def compute(cfg, teams, aliases, matches):
                 "a": m["a"], "b": m["b"], "sa": m["sa"], "sb": m["sb"],
                 "ra": round(to_rating(A["mu"])), "rb": round(to_rating(B["mu"])),
                 "pa": round(p, 3), "note": m["note"],
+                "da": round(to_rd(A["phi"])), "db": round(to_rd(B["phi"])),   # 試合前の ±RD
             })
 
         before = {t: to_rating(state[t]["mu"]) for t in state}

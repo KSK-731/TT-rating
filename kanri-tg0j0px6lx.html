@@ -186,6 +186,7 @@ a{color:var(--accent)}
   <div class="card">
     <h2 style="margin-top:0">2. お知らせ <span class="pill" id="noticePill">非表示</span></h2>
     <textarea id="noticeText" placeholder="例：新人大会は11月7日（土）、大浜だいしんアリーナで行われます。"></textarea>
+    <p class="meta" style="margin:4px 0 0">https:// で始まるアドレスを書くと、公開ページではタップできるリンクになります。</p>
     <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="noticeOn"> 公開ページの上に表示する</label>
     <div class="row"><button class="btn pri" id="noticeSave">保存する</button></div>
     <div class="st" id="noticeSt"></div>
@@ -448,7 +449,7 @@ function mountBracket(state){
 }
 let loadArmed = null;
 $('#nextLoad').onclick = () => {
-  if (!published || !published.text) { $('#nextSt').textContent = '公開中の組み合わせはありません。'; return; }
+  if (!published || !published.active || !published.text) { $('#nextSt').textContent = '公開中の組み合わせはありません。'; return; }
   if (!loadArmed) { $('#nextLoad').textContent = '今の下書きは消えます。もう一度押すと読み込みます'; loadArmed = setTimeout(() => { loadArmed = null; $('#nextLoad').textContent = '公開中の内容を読み込む'; }, 4000); return; }
   clearTimeout(loadArmed); loadArmed = null; $('#nextLoad').textContent = '公開中の内容を読み込む';
   const st = { text: published.text, event: published.event, date: published.date, note: published.note, results: published.results || {} };
@@ -471,8 +472,8 @@ $('#nextHide').onclick = async () => {
   if (!hideArmed) { $('#nextHide').textContent = 'もう一度押すと表示をやめます'; hideArmed = setTimeout(() => { hideArmed = null; $('#nextHide').textContent = '表示をやめる'; }, 3000); return; }
   clearTimeout(hideArmed); hideArmed = null; $('#nextHide').textContent = '表示をやめる';
   busy($('#nextHide'), true); st.textContent = '保存しています…';
-  try { const sha = await update('next.json', t => { let o = {}; try { o = JSON.parse(t || '{}'); } catch (e) {} o.active = false; return JSON.stringify(o, null, 2) + '\n'; }, '次の大会の表示をやめる');
-    if (published) published.active = false; setPill('#nextPill', false, '公開中', '非公開'); watchBuild(sha, st); }
+  try { const sha = await update('next.json', t => { let o = {}; try { o = JSON.parse(t || '{}'); } catch (e) {} return JSON.stringify({ active: false, updated: new Date().toISOString() }, null, 2) + '\n'; }, '次の大会の表示をやめる');
+    published = { active: false }; setPill('#nextPill', false, '公開中', '非公開'); watchBuild(sha, st); }
   catch (e) { st.innerHTML = `<span class="ng">× ${esc(explain(e))}</span>`; }
   busy($('#nextHide'), false);
 };
@@ -762,7 +763,7 @@ Promise.all([
   setPill('#nextPill', nx && nx.active, '公開中', '非公開');
   showNotice(nt || {});
   const draft = lsGet(DRAFT);
-  mountBracket(draft || (nx && nx.text ? { text: nx.text, event: nx.event, date: nx.date, note: nx.note, results: nx.results || {} } : {}));
+  mountBracket(draft || (nx && nx.active && nx.text ? { text: nx.text, event: nx.event, date: nx.date, note: nx.note, results: nx.results || {} } : {}));
   renderMatchesAdmin(); renderTeamsAdmin(); renderConfig();
   checkKey();
 }).catch(e => { document.querySelector('header .meta').textContent = 'データを読み込めませんでした：' + e; });
