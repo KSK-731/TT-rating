@@ -658,7 +658,9 @@ def main():
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     write_icons()
-    for name in ("index.html", "admin.html", "bracket.js"):
+    # ページはファイル名を問わずすべて公開する（管理者用ページの名前は自由に変えられる）
+    pages = sorted({p.name for p in ROOT.glob("*.html")} | {"bracket.js"})
+    for name in pages:
         if (ROOT / name).exists():
             shutil.copy(ROOT / name, SITE / name)
     # 管理者用ページで保存したお知らせと次の大会（壊れていたら公開しない）
