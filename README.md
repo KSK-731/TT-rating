@@ -3,7 +3,9 @@
 大阪の高校卓球の団体戦の結果から、各校のレーティング（強さの数値）を計算して公開するサイトです。
 
 - 公開ページ：`https://（持ち主）.github.io/TT-rating/`
-- 管理者用ページ：`https://（持ち主）.github.io/TT-rating/admin.html`（公開ページからはリンクしていません）
+- 管理者用ページ：`https://（持ち主）.github.io/TT-rating/（管理者用ページのファイル名）`（公開ページからはリンクしていません）
+
+管理者用ページは、リポジトリでファイル名を変えると、そのままアドレスも変わります（例：`kanri-tg0j0px6lx.html`）。
 
 ## ふだんの作業（管理者用ページで行います）
 
@@ -28,57 +30,34 @@
 
 管理者用ページから保存するには、GitHub の「鍵」が必要です。鍵は管理者用ページを開いた端末の中にだけ保存され、公開ページやほかの人には送られません。
 
-### 作り方（リポジトリの持ち主が使う場合）
+### 作り方
 
 1. GitHub にログインし、<https://github.com/settings/personal-access-tokens/new> を開きます。
 2. **Token name**：「卓球レーティング管理」など
-3. **Expiration**：いちばん長い期間（1年）
-4. **Repository access**：**Only select repositories** を選び、`TT-rating` だけを選ぶ
-5. **Permissions**：**Contents** を **Read and write**、**Actions** を **Read-only** にする
-6. **Generate token** を押し、表示された `github_pat_…` をコピーする（二度と表示されません）
-7. 管理者用ページの「1. 鍵の設定」に貼り付けて「保存して確認」を押す
+3. **Resource owner**：組織（Organization）の名前を選ぶ
+4. **Expiration**：いちばん長い期間（1年）
+5. **Repository access**：**Only select repositories** を選び、`TT-rating` だけを選ぶ
+6. **Permissions**：**Contents** を **Read and write**、**Actions** を **Read-only** にする
+7. **Generate token** を押し、表示された `github_pat_…` をコピーする（二度と表示されません）
+8. 管理者用ページの「1. 鍵の設定」に貼り付けて「保存して確認」を押す
 
-### 作り方（招待されて編集する人＝引き継いだ人が使う場合）
-
-上の方法の鍵は、自分が持ち主のリポジトリにしか使えません。招待された人は「従来の鍵」を作ります。
-
-1. GitHub にログインし、<https://github.com/settings/tokens/new> を開きます。
-2. **Note**：「卓球レーティング管理」など
-3. **Expiration**：**Custom** を選び、1年後の日付
-4. **Select scopes**：**public_repo** にだけチェック
-5. **Generate token** を押し、表示された `ghp_…` をコピーする
-6. 管理者用ページの「1. 鍵の設定」に貼り付けて「保存して確認」を押す
-
-この鍵は、その人が編集できる公開リポジトリすべてに使えるので、ほかの人に見せないでください。
+組織の **Settings → Personal access tokens → Settings → Fine-grained tokens** は **Do not require administrator approval** にしておきます（承認待ちにならないようにするため）。
 
 ### 期限が切れたとき・端末をなくしたとき
 
 - 期限が切れると、管理者用ページに「鍵が正しくないか、期限が切れています」と出ます。上の手順で作り直してください。
-- 端末をなくしたときは、<https://github.com/settings/personal-access-tokens>（従来の鍵は <https://github.com/settings/tokens>）でその鍵を **Delete** してください。それだけで、その鍵は使えなくなります。
+- 端末をなくしたときは、<https://github.com/settings/personal-access-tokens> でその鍵を **Delete** してください。それだけで、その鍵は使えなくなります。
 
 ## 引き継ぎのしかた（年度替わり）
 
-### 1. 次の担当者を招待する（今の担当者が行う）
+リポジトリは組織（Organization）が持っているので、担当者が代わってもアドレスは変わりません。
 
 1. 次の担当者に、GitHub のアカウントを作ってもらいます（<https://github.com/signup>）。
-2. リポジトリの **Settings → Collaborators → Add people** で、次の担当者のユーザー名を入れて招待します。
-3. 次の担当者に届いた招待メールで、**Accept invitation** を押してもらいます。
+2. 今の担当者が、組織のページの **People → Invite member** で次の担当者を招待し、役割を **Owner** にします。
+3. 次の担当者は、届いた招待で **Join** を押し、上の「鍵の作り方」で自分の鍵を作ります。
+4. 引き継ぎが終わったら、今の担当者は自分の鍵を削除し、組織の **People** から自分を外します（オーナーが最低1人残るようにしてください）。
 
-### 2. 次の担当者が鍵を作る
-
-次の担当者が、自分の GitHub アカウントで上の「作り方（招待されて編集する人…）」を行います。
-
-今の担当者の鍵を渡す必要はありません。引き継ぎが終わったら、今の担当者は自分の鍵を削除してください。
-
-### 3. （必要なら）リポジトリごと渡す
-
-今の担当者がいなくなっても続けられるように、リポジトリの持ち主を次の担当者に変えることもできます（**Settings → General → Danger Zone → Transfer ownership**）。ただし、公開ページのアドレスが `https://（新しい持ち主）.github.io/TT-rating/` に変わります。
-
-アドレスを変えたくないときは、次のどれかにします。
-
-- **持ち主はそのまま**：リポジトリは今の持ち主のアカウントに置いたまま、次の担当者を招待して編集してもらいます（アドレスは変わりません。持ち主のアカウントは消さないでください）。
-- **部のアカウントを作る**：部の共用アカウントを持ち主にしておけば、担当者が何代変わってもアドレスは変わりません。
-- **独自ドメイン**：年1,000〜2,000円ほどで自分のドメインを買い、リポジトリの **Settings → Pages → Custom domain** に設定すると、持ち主が変わってもアドレスは変わりません。
+鍵を人に渡す必要はありません。管理者用ページのファイル名（アドレス）は、次の担当者に直接伝えてください。
 
 ## 設定（config.json）
 
@@ -102,5 +81,5 @@
 | `aliases.csv` | 旧校名・表記ゆれ（旧名称,現名称） |
 | `notice.json` / `next.json` | お知らせと次の大会（管理者用ページが書き込みます） |
 | `rate.py` | レーティングの計算 |
-| `index.html` / `admin.html` / `bracket.js` | 公開ページ・管理者用ページ・トーナメント表の部品 |
+| `index.html` / 管理者用ページ（`.html`）/ `bracket.js` | 公開ページ・管理者用ページ・トーナメント表の部品 |
 | `.github/workflows/build.yml` | 保存のたびに計算して公開する設定 |
